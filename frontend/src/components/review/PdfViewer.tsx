@@ -220,7 +220,8 @@ export function PdfViewer({
           </Button>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto bg-muted/50">
+      {/* positioned, so page offsetTop is measured from the scroller (hover-to-scroll) */}
+      <div className="relative min-h-0 flex-1 overflow-auto bg-muted/50">
         <DocumentPages
           key={current.id}
           caseId={caseId}

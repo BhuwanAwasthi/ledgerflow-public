@@ -181,14 +181,14 @@ export function TemplateGrid({
             </button>
           ))}
         </div>
-        <span className="text-muted-foreground">
+        <span className="hidden text-muted-foreground 2xl:inline">
           {ws.erp_profile} · {rows.length} row{rows.length === 1 ? "" : "s"} · {tv.status === "final" ? "final" : "draft"} · by {tv.created_by}
         </span>
         <div className="ml-auto flex items-center gap-3 text-muted-foreground">
           {flags.size > 0 && <Legend className={cn(amber.soft, amber.ring)} label="Check this" />}
           {changed.size > 0 && <Legend className={cn(indigo.soft, indigo.ring)} label={`Changed since v${tv.version - 1}`} />}
           {editable && (
-            <span className="inline-flex items-center gap-1">
+            <span className="hidden items-center gap-1 2xl:inline-flex">
               <Pencil className="size-3" /> Click a cell to edit
             </span>
           )}

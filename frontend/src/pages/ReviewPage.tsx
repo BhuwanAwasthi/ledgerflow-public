@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api, apiUrl, unwrap, type GridOp, type Workspace } from "@/api/client";
-import { ErrorNote, PageHeader, StatusBadge } from "@/components/common";
+import { ErrorNote, StatusBadge } from "@/components/common";
 import { ActionBar, type Draft, type ReviewActionName } from "@/components/review/ActionBar";
 import { ComparePanel, invoiceDocumentId } from "@/components/review/ComparePanel";
 import { DecisionBar } from "@/components/review/DecisionBar";
@@ -139,115 +139,120 @@ export default function ReviewPage() {
   ) : undefined;
 
   return (
-    <div>
-      <PageHeader
-        eyebrow={
-          <span className="inline-flex items-center gap-1.5">
-            <FileSearch className="size-3.5" /> Review workspace
-          </span>
-        }
-        title={
-          <span className="flex items-center gap-3">
-            <span className="tabular">{c.ref}</span>
-            <StatusBadge kind="case" value={c.status} pulse={processing} className="text-[13px]" />
-          </span>
-        }
-        description={[c.vendor_name ?? c.submitter_name, c.invoice_number && `invoice ${c.invoice_number}`, c.submitter_email && `from ${c.submitter_email}`].filter(Boolean).join(" · ")}
-        actions={
-          <>
-            {duplicates.length > 0 && (
-              <Button variant="outline" size="sm" onClick={() => setParams(view === "compare" ? { view: "review" } : {}, { replace: true })}>
-                {view === "compare" ? <Columns2 /> : <GitCompareArrows />} {view === "compare" ? "Review view" : "Compare duplicate"}
-              </Button>
-            )}
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/cases/${id}/live`}>
-                <Activity /> Live run
-              </Link>
+    // lg: the workspace fits the viewport (top bar 3.5rem + main padding 4rem): header, decision bar, the two
+    // panes taking the rest, action bar last, so a 1280x720 screen share shows PDF, grid and actions at once
+    <div className="flex flex-col gap-3 lg:h-[calc(100vh-7.5rem)] lg:min-h-[540px]">
+      <div className="flex shrink-0 items-center gap-3">
+        <FileSearch className="size-4 text-muted-foreground" aria-hidden />
+        <h1 className="text-lg font-semibold tracking-tight tabular">{c.ref}</h1>
+        <StatusBadge kind="case" value={c.status} pulse={processing} />
+        <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+          {[c.vendor_name ?? c.submitter_name, c.invoice_number && `invoice ${c.invoice_number}`, c.submitter_email && `from ${c.submitter_email}`].filter(Boolean).join(" · ")}
+        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          {duplicates.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => setParams(view === "compare" ? { view: "review" } : {}, { replace: true })}>
+              {view === "compare" ? <Columns2 /> : <GitCompareArrows />} {view === "compare" ? "Review view" : "Compare duplicate"}
             </Button>
-            <Button variant="outline" size="sm" asChild>
-              <a href={apiUrl(`/api/cases/${id}/audit-pack`)}>
-                <Download /> Audit pack
-              </a>
-            </Button>
-          </>
-        }
-      />
-
-      <div className="space-y-4 pb-2">
-        <DecisionBar c={c} balance={w.po_balance} currency={currency} lowConfidenceBelow={cfg?.app.ui.review?.low_confidence_below} />
-
-        {processing && (
-          <div className={cn("flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-[13px]", violet.border, violet.soft)}>
-            <Loader2 className={cn("size-4 animate-spin", violet.text)} />
-            <span>
-              <span className="font-medium">{c.status_label ?? "Processing"}…</span> The checks, decision and template run again; this page updates when they finish.
-            </span>
-            <Link to={`/cases/${id}/live`} className="ml-auto text-xs font-medium text-primary hover:underline">
-              Watch live
+          )}
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/cases/${id}/live`}>
+              <Activity /> Live run
             </Link>
-          </div>
-        )}
-
-        {view === "compare" && duplicates[0] ? (
-          <ComparePanel current={c} link={duplicates[0]} currency={currency} />
-        ) : (
-          <div className="grid gap-4 lg:h-[calc(100vh-18rem)] lg:min-h-[560px] lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-            <Card className="flex h-[70vh] min-h-0 flex-col overflow-hidden lg:h-auto">
-              <PdfViewer caseId={id} documents={c.documents} invoiceDocId={invoiceDocumentId(c)} boxes={boxes} active={active} onHover={setActive} className="min-h-0 flex-1" />
-            </Card>
-
-            <Card className={cn("flex min-h-0 flex-col overflow-hidden", processing && "opacity-80")}>
-              <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="flex min-h-0 flex-1 flex-col">
-                <TabsList>
-                  <TabsTrigger value="template">
-                    <Table2 /> Template
-                  </TabsTrigger>
-                  <TabsTrigger value="rules">
-                    <ListChecks /> Rules <Count n={counts.rules} />
-                  </TabsTrigger>
-                  <TabsTrigger value="match">
-                    <Columns2 /> Match <Count n={counts.match} />
-                  </TabsTrigger>
-                  <TabsTrigger value="history">
-                    <History /> History <Count n={c.templates.length + c.review_actions.filter((a) => a.action !== "override").length} muted />
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="template" className="min-h-0 flex-1 overflow-auto">
-                  <TemplateGrid caseId={id} ws={w} templates={c.templates} pending={pending} onPendingChange={setPending} activeField={active} onHoverField={setActive} />
-                </TabsContent>
-                <TabsContent value="rules" className="min-h-0 flex-1 overflow-auto">
-                  <RulesTab results={c.rule_results} cfg={cfg} />
-                </TabsContent>
-                <TabsContent value="match" className="min-h-0 flex-1 overflow-auto">
-                  <MatchTab ws={w} currency={currency} />
-                </TabsContent>
-                <TabsContent value="history" className="min-h-0 flex-1 overflow-auto">
-                  <HistoryTab detail={c} />
-                </TabsContent>
-              </Tabs>
-            </Card>
-          </div>
-        )}
-
-        <div className="sticky bottom-3 z-20 overflow-hidden rounded-lg border bg-card/95 shadow-[0_8px_30px_-6px_rgba(16,24,40,0.25)] backdrop-blur">
-          <ActionBar
-            caseRef={c.ref ?? `case ${id}`}
-            totalText={money(c.total, currency)}
-            versionNo={latestTemplate?.version ?? null}
-            reviewable={w.reviewable && !processing}
-            busy={review.isPending || processing}
-            pendingOps={pendingOps}
-            onDiscardEdits={() => setPending({})}
-            onSubmit={async (action, text, ops) => {
-              await review.mutateAsync({ action, text, ops });
-            }}
-            draft={holdDraft}
-            drafting={asked && c.status !== "on_hold"}
-            onHold={c.status === "on_hold"}
-            closed={closedLine}
-          />
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <a href={apiUrl(`/api/cases/${id}/audit-pack`)}>
+              <Download /> Audit pack
+            </a>
+          </Button>
         </div>
+      </div>
+
+      <div className="shrink-0">
+        <DecisionBar
+          c={c}
+          balance={w.po_balance}
+          currency={currency}
+          lowConfidenceBelow={cfg?.app.ui.review?.low_confidence_below}
+          callouts={c.rule_results
+            .filter((r) => r.status === "fail" && cfg?.app.ui.review?.callout_rules?.includes(r.rule_id))
+            .map((r) => ({ r, name: cfg?.rules.rules.find((x) => x.id === r.rule_id)?.name ?? r.rule_id }))}
+        />
+      </div>
+
+      {processing && (
+        <div className={cn("flex shrink-0 items-center gap-2.5 rounded-lg border px-4 py-2 text-[13px]", violet.border, violet.soft)}>
+          <Loader2 className={cn("size-4 animate-spin", violet.text)} />
+          <span>
+            <span className="font-medium">{c.status_label ?? "Processing"}…</span> The checks, decision and template run again; this page updates when they finish.
+          </span>
+          <Link to={`/cases/${id}/live`} className="ml-auto text-xs font-medium text-primary hover:underline">
+            Watch live
+          </Link>
+        </div>
+      )}
+
+      {view === "compare" && duplicates[0] ? (
+        <div className="min-h-0 flex-1 overflow-auto">
+          <ComparePanel current={c} link={duplicates[0]} currency={currency} />
+        </div>
+      ) : (
+        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+          <Card className="flex h-[70vh] min-h-0 flex-col overflow-hidden lg:h-auto">
+            <PdfViewer caseId={id} documents={c.documents} invoiceDocId={invoiceDocumentId(c)} boxes={boxes} active={active} onHover={setActive} className="min-h-0 flex-1" />
+          </Card>
+
+          <Card className={cn("flex h-[70vh] min-h-0 flex-col overflow-hidden lg:h-auto", processing && "opacity-80")}>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="flex min-h-0 flex-1 flex-col">
+              <TabsList>
+                <TabsTrigger value="template">
+                  <Table2 /> Template
+                </TabsTrigger>
+                <TabsTrigger value="rules">
+                  <ListChecks /> Rules <Count n={counts.rules} />
+                </TabsTrigger>
+                <TabsTrigger value="match">
+                  <Columns2 /> Match <Count n={counts.match} />
+                </TabsTrigger>
+                <TabsTrigger value="history">
+                  <History /> History <Count n={c.templates.length + c.review_actions.filter((a) => a.action !== "override").length} muted />
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="template" className="min-h-0 flex-1 overflow-auto">
+                <TemplateGrid caseId={id} ws={w} templates={c.templates} pending={pending} onPendingChange={setPending} activeField={active} onHoverField={setActive} />
+              </TabsContent>
+              <TabsContent value="rules" className="min-h-0 flex-1 overflow-auto">
+                <RulesTab results={c.rule_results} cfg={cfg} />
+              </TabsContent>
+              <TabsContent value="match" className="min-h-0 flex-1 overflow-auto">
+                <MatchTab ws={w} currency={currency} />
+              </TabsContent>
+              <TabsContent value="history" className="min-h-0 flex-1 overflow-auto">
+                <HistoryTab detail={c} />
+              </TabsContent>
+            </Tabs>
+          </Card>
+        </div>
+      )}
+
+      {/* last row of the viewport layout on lg; sticky to the screen bottom when the page scrolls (narrow screens) */}
+      <div className="sticky bottom-3 z-20 shrink-0 overflow-hidden rounded-lg border bg-card/95 shadow-[0_8px_30px_-6px_rgba(16,24,40,0.25)] backdrop-blur lg:static lg:shadow-sm">
+        <ActionBar
+          caseRef={c.ref ?? `case ${id}`}
+          totalText={money(c.total, currency)}
+          versionNo={latestTemplate?.version ?? null}
+          reviewable={w.reviewable && !processing}
+          busy={review.isPending || processing}
+          pendingOps={pendingOps}
+          onDiscardEdits={() => setPending({})}
+          onSubmit={async (action, text, ops) => {
+            await review.mutateAsync({ action, text, ops });
+          }}
+          draft={holdDraft}
+          drafting={asked && c.status !== "on_hold"}
+          onHold={c.status === "on_hold"}
+          closed={closedLine}
+        />
       </div>
     </div>
   );

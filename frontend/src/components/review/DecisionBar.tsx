@@ -1,5 +1,6 @@
-import { Building2, FileText, Receipt } from "lucide-react";
-import type { CaseDetail, POBalance } from "@/api/client";
+import { Building2, FileText, Receipt, TriangleAlert } from "lucide-react";
+import { useState } from "react";
+import type { CaseDetail, POBalance, RuleResult } from "@/api/client";
 import { StatusBadge } from "@/components/common";
 import { Tip } from "@/components/ui/overlays";
 import { money, plainMoney } from "@/lib/format";
@@ -58,15 +59,45 @@ function Fact({ icon: Icon, label, children }: { icon: typeof FileText; label: s
   );
 }
 
-export function DecisionBar({ c, balance, currency, lowConfidenceBelow }: { c: CaseDetail; balance: POBalance | null | undefined; currency: string; lowConfidenceBelow: number | undefined }) {
+/** A failed rule the reviewer must see first (app.yaml ui.review.callout_rules), e.g. an uncertain classification. */
+function Callout({ r, name }: { r: RuleResult; name: string }) {
+  const t = statusDef("severity", r.severity).style;
+  return (
+    <div role="alert" className={cn("mt-2 flex max-w-3xl items-start gap-2.5 rounded-md border px-3 py-2.5", t.border, t.soft)}>
+      <TriangleAlert className={cn("mt-0.5 size-4 shrink-0", t.text)} />
+      <div className="min-w-0 text-[13px] leading-relaxed">
+        <span className="font-semibold">{name}: </span>
+        {r.explanation}
+      </div>
+    </div>
+  );
+}
+
+export function DecisionBar({
+  c,
+  balance,
+  currency,
+  lowConfidenceBelow,
+  callouts,
+}: {
+  c: CaseDetail;
+  balance: POBalance | null | undefined;
+  currency: string;
+  lowConfidenceBelow: number | undefined;
+  callouts: { r: RuleResult; name: string }[];
+}) {
   const caseTone = statusDef("case", c.status).style;
   const confidence = c.confidence === null ? null : Math.round(c.confidence * 100);
   // sticky review: the rules pass now, but a reviewer touched the case, so it waits for a reviewer
   const sticky = c.status === "needs_review" && !!c.decision && c.decision !== "needs_review";
   const [lead, ...rest] = (c.decision_summary ?? "").split(/(?<=\.)\s+/);
+  // a called-out rule's explanation is shown once, in its callout, not again in the detail
+  const detail = callouts.reduce((t, x) => t.replace(x.r.explanation, "").trim(), (sticky ? c.decision_summary : rest.join(" ")) ?? "");
+  // the detail is clamped to two lines so the panes keep their height on a 720px screen
+  const [expanded, setExpanded] = useState(false);
   return (
     <div className={cn("overflow-hidden rounded-lg border bg-card", caseTone.border)}>
-      <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-start">
+      <div className="flex flex-col gap-4 px-5 py-3 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground">Decision</span>
@@ -88,11 +119,21 @@ export function DecisionBar({ c, balance, currency, lowConfidenceBelow }: { c: C
           ) : (
             lead && <p className="mt-2 max-w-3xl text-sm font-medium leading-relaxed">{lead}</p>
           )}
-          {(sticky ? c.decision_summary : rest.join(" ")) && (
-            <p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-muted-foreground">{sticky ? c.decision_summary : rest.join(" ")}</p>
+          {callouts.map((x) => (
+            <Callout key={x.r.id} r={x.r} name={x.name} />
+          ))}
+          {detail && (
+            <div className="mt-1 max-w-3xl text-[13px] leading-relaxed text-muted-foreground">
+              <p className={cn(!expanded && "line-clamp-2")}>{detail}</p>
+              {detail.length > 180 && (
+                <button className="text-xs font-medium text-primary hover:underline" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
+                  {expanded ? "Less" : "More"}
+                </button>
+              )}
+            </div>
           )}
         </div>
-        <div className="grid shrink-0 grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto] gap-x-6 gap-y-3 lg:w-[480px]">
+        <div className="grid shrink-0 grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto] gap-x-6 gap-y-3 lg:w-[400px] xl:w-[480px]">
           <Fact icon={Building2} label="Vendor">
             {c.vendor_name ?? "Unknown vendor"}
           </Fact>

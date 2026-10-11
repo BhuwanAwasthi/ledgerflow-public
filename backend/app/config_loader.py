@@ -99,6 +99,8 @@ class DashboardSettings(_Strict):
 class ReviewSettings(_Strict):
     # review grid: an extracted value read below this confidence is shown amber
     low_confidence_below: float = Field(default=0.9, ge=0, le=1)
+    # failed rules whose explanation is called out in the decision bar (the reason a reviewer must see first)
+    callout_rules: list[str] = Field(default_factory=list)
 
 
 class UISettings(_Strict):
@@ -445,6 +447,12 @@ def build_config(files: dict[str, str]) -> ResolvedConfig:
         errors.extend(validate_workflow(workflow, agents))
         if app:
             errors.extend(validate_ui(app.ui, workflow, agents))
+
+    if app and rules:
+        rule_ids = {r.id for r in rules.rules}
+        for rid in app.ui.review.callout_rules:
+            if rid not in rule_ids:
+                errors.append(f"app.yaml: ui.review.callout_rules names unknown rule '{rid}'")
 
     if errors or not (app and workflow and rules and doc_types):
         raise ConfigError(errors or ["config could not be loaded"])

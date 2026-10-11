@@ -205,3 +205,10 @@ async def test_grid_cannot_edit_bank_details(pipeline: Pipeline):
     rec = events(pipeline, cid, "reconcile")[-1]
     assert rec.outcome == "needs_clarification" and "remit_bank.account_last4" in rec.output["question"]
     assert len(templates(pipeline, cid)) == 1
+
+
+def test_callout_rules_must_exist():
+    files = patch_yaml(read_config_files(CONFIG_DIR), "app.yaml",
+                       lambda d: d["ui"]["review"].__setitem__("callout_rules", ["no_such_rule"]))
+    with pytest.raises(ConfigError, match="callout_rules names unknown rule 'no_such_rule'"):
+        build_config(files)
