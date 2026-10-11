@@ -1,0 +1,29 @@
+{
+  "scenario": "S08_price_variance",
+  "agent": "po_matching",
+  "documents": [
+    "S08_coastal_CL-778.pdf"
+  ],
+  "calls": [
+    {
+      "action": "match",
+      "schema": "POInferenceOutput",
+      "when": {},
+      "output": {
+        "candidates": [
+          {
+            "po_number": "PO-1003",
+            "line_similarity": 0.9,
+            "reason": "LTL freight Chicago to Dallas matches PO line 1; the description adds a fuel surcharge.",
+            "pairs": [
+              {
+                "invoice_line_index": 0,
+                "po_line_no": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

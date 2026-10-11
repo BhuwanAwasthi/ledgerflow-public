@@ -1,0 +1,20 @@
+{
+  "scenario": "S06_bank_change",
+  "agent": "decision",
+  "documents": [
+    "S06_evergreen_EP-5531.pdf"
+  ],
+  "calls": [
+    {
+      "action": "decide",
+      "schema": "DecisionExplanation",
+      "when": {
+        "decision": "on_hold"
+      },
+      "output": {
+        "summary": "On hold: Evergreen Packaging invoice EP-5531 for USD 2,381.50 asks for payment to an account ending 9910, but our vendor master has 7788. Changed bank details are a common payment-fraud pattern, so we will not pay until the change is verified.",
+        "next_step": "We drafted a request for a signed bank letter, which we will confirm by phone with a known contact."
+      }
+    }
+  ]
+}

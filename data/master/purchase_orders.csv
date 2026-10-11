@@ -1,0 +1,8 @@
+po_number,vendor_code,currency,amount,status,created_at,approved_by,notes
+PO-1001,V002,USD,10000.00,open,2026-08-20,Priya Raman (Procurement),
+PO-1002,V001,USD,4415.00,open,2026-09-01,Priya Raman (Procurement),
+PO-1003,V003,USD,5000.00,open,2026-09-05,Priya Raman (Procurement),
+PO-1004,V006,USD,6000.00,open,2026-08-25,Priya Raman (Procurement),Raised from quote Q-77
+PO-1005,V005,USD,2200.00,open,2026-09-10,Priya Raman (Procurement),
+PO-1006,V006,USD,2500.00,open,2026-07-30,Priya Raman (Procurement),
+PO-1007,V001,USD,360.00,open,2026-09-22,Priya Raman (Procurement),

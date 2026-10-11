@@ -1,0 +1,29 @@
+{
+  "scenario": "S09_missing_fields",
+  "agent": "po_matching",
+  "documents": [
+    "S09_coastal_scan_missing.pdf"
+  ],
+  "calls": [
+    {
+      "action": "match",
+      "schema": "POInferenceOutput",
+      "when": {},
+      "output": {
+        "candidates": [
+          {
+            "po_number": "PO-1003",
+            "line_similarity": 0.98,
+            "reason": "One LTL shipment Chicago to Dallas matches PO line 1.",
+            "pairs": [
+              {
+                "invoice_line_index": 0,
+                "po_line_no": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

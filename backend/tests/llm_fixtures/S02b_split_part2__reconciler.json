@@ -1,0 +1,38 @@
+{
+  "scenario": "S02b_split_part2",
+  "agent": "reconciler",
+  "documents": [
+    "S02b_brightline_BL-0107.pdf"
+  ],
+  "calls": [
+    {
+      "action": "apply_remark",
+      "schema": "ChangeSet",
+      "when": {
+        "remark": "PO was amended to $10,500 by procurement. Accept the premium support line and code it to 6410."
+      },
+      "output": {
+        "ops": [
+          {
+            "op": "set_po_amount_note",
+            "po_number": "PO-1001",
+            "new_amount": 10500.0,
+            "reason": "Procurement amended PO-1001 to $10,500 (reviewer remark)."
+          },
+          {
+            "op": "set_gl",
+            "line_index": 1,
+            "gl_code": "6410",
+            "department": null
+          },
+          {
+            "op": "override_rule",
+            "rule_id": "unmatched_lines",
+            "reason": "Reviewer accepted the Premium support add-on line."
+          }
+        ],
+        "summary": "Raised PO-1001 to 10,500.00 for this invoice, accepted the Premium support line and coded it to 6410 Software Support."
+      }
+    }
+  ]
+}

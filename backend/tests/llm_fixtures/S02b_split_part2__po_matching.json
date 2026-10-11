@@ -1,0 +1,33 @@
+{
+  "scenario": "S02b_split_part2",
+  "agent": "po_matching",
+  "documents": [
+    "S02b_brightline_BL-0107.pdf"
+  ],
+  "calls": [
+    {
+      "action": "match",
+      "schema": "POInferenceOutput",
+      "when": {},
+      "output": {
+        "candidates": [
+          {
+            "po_number": "PO-1001",
+            "line_similarity": 0.72,
+            "reason": "Tranche 2 of the licence matches PO line 1; the premium support add-on is not on the PO.",
+            "pairs": [
+              {
+                "invoice_line_index": 0,
+                "po_line_no": 1
+              },
+              {
+                "invoice_line_index": 1,
+                "po_line_no": null
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

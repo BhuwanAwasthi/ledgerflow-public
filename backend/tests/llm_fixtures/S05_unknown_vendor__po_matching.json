@@ -1,0 +1,34 @@
+{
+  "scenario": "S05_unknown_vendor",
+  "agent": "po_matching",
+  "documents": [
+    "S05_novaprint_NPS-0042.pdf",
+    "S05_novaprint_W9.pdf",
+    "S05_novaprint_bank_letter.pdf"
+  ],
+  "calls": [
+    {
+      "action": "suggest_gl",
+      "schema": "GLCodingOutput",
+      "when": {},
+      "output": {
+        "lines": [
+          {
+            "line_index": 0,
+            "gl_code": "6600",
+            "department": "Marketing",
+            "confidence": 0.88,
+            "reason": "Trade show banners are marketing print material."
+          },
+          {
+            "line_index": 1,
+            "gl_code": "6600",
+            "department": "Marketing",
+            "confidence": 0.88,
+            "reason": "Brochure printing is marketing print material."
+          }
+        ]
+      }
+    }
+  ]
+}

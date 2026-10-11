@@ -1,0 +1,37 @@
+{
+  "scenario": "S04_duplicate_scan",
+  "agent": "po_matching",
+  "documents": [
+    "S04_acme_scan_duplicate.pdf"
+  ],
+  "calls": [
+    {
+      "action": "match",
+      "schema": "POInferenceOutput",
+      "when": {},
+      "output": {
+        "candidates": [
+          {
+            "po_number": "PO-1002",
+            "line_similarity": 0.99,
+            "reason": "All three lines (paper, toner, chairs) match PO lines 1-3 with the same quantities.",
+            "pairs": [
+              {
+                "invoice_line_index": 0,
+                "po_line_no": 1
+              },
+              {
+                "invoice_line_index": 1,
+                "po_line_no": 2
+              },
+              {
+                "invoice_line_index": 2,
+                "po_line_no": 3
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

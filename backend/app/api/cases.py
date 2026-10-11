@@ -32,7 +32,7 @@ SessionDep = Annotated[Session, Depends(get_session)]
 OrchDep = Annotated[Orchestrator, Depends(get_orchestrator)]
 
 
-def _case_out(s: Session, orch: Orchestrator, case: Case) -> dict[str, Any]:
+def case_out(s: Session, orch: Orchestrator, case: Case) -> dict[str, Any]:
     out = CaseOut.model_validate(case).model_dump()
     stage_id = case.current_stage
     if stage_id and not stage_id.startswith("end:") and case.config_snapshot:
@@ -79,7 +79,7 @@ async def create(
         source="upload",
     )
     orch.enqueue(case.id)
-    return _case_out(s, orch, case)
+    return case_out(s, orch, case)
 
 
 @router.get("", response_model=CaseListOut)
@@ -106,7 +106,7 @@ async def list_cases(
     page, page_size = max(page, 1), min(max(page_size, 1), 200)
     rows = s.scalars(stmt.order_by(Case.id.desc()).offset((page - 1) * page_size).limit(page_size)).all()
     return {
-        "items": [_case_out(s, orch, c) for c in rows],
+        "items": [case_out(s, orch, c) for c in rows],
         "total": total,
         "page": page,
         "page_size": page_size,
@@ -116,7 +116,7 @@ async def list_cases(
 @router.get("/{case_id}", response_model=CaseDetailOut)
 async def get_case(case_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     case = _load_case(s, case_id)
-    out = _case_out(s, orch, case)
+    out = case_out(s, orch, case)
     last_rule_run = s.scalar(select(func.max(RuleResult.run_no)).where(RuleResult.case_id == case_id))
     out.update(
         documents=s.scalars(select(Document).where(Document.case_id == case_id).order_by(Document.id)).all(),
@@ -200,4 +200,4 @@ async def review(case_id: int, body: ReviewIn, s: SessionDep, orch: OrchDep) -> 
     except OrchestratorError as e:
         raise HTTPException(409, str(e)) from e
     s.expire_all()
-    return _case_out(s, orch, _load_case(s, case_id))
+    return case_out(s, orch, _load_case(s, case_id))

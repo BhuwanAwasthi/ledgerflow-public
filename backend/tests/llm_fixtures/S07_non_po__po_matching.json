@@ -1,0 +1,32 @@
+{
+  "scenario": "S07_non_po",
+  "agent": "po_matching",
+  "documents": [
+    "S07_delta_DF-2026-10.pdf"
+  ],
+  "calls": [
+    {
+      "action": "suggest_gl",
+      "schema": "GLCodingOutput",
+      "when": {},
+      "output": {
+        "lines": [
+          {
+            "line_index": 0,
+            "gl_code": "6100",
+            "department": "Facilities",
+            "confidence": 0.95,
+            "reason": "HVAC maintenance is facilities maintenance, the vendor's default account."
+          },
+          {
+            "line_index": 1,
+            "gl_code": "6100",
+            "department": "Facilities",
+            "confidence": 0.95,
+            "reason": "Air filter replacement is part of HVAC maintenance."
+          }
+        ]
+      }
+    }
+  ]
+}

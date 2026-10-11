@@ -1,0 +1,8 @@
+code,legal_name,aliases,tax_id,country,email_domain,bank_last4,iban_hash,category,status,default_gl,non_po_allowed
+V001,Acme Office Supplies Inc,,12-3456789,US,acme-office.example,4321,,supplies,approved,6200,false
+V002,Brightline Software Inc,,23-4567890,US,brightline.example,5566,,software,approved,6400,false
+V003,Coastal Logistics LLC,,34-5678901,US,coastallogistics.example,1122,,freight,approved,5200,false
+V004,Delta Facilities Services,,45-6789012,US,deltafacilities.example,3344,,facilities,approved,6100,true
+V005,Evergreen Packaging Co,,56-7890123,US,evergreenpack.example,7788,,packaging,approved,5100,false
+V006,Fulcrum Consulting Group,,67-8901234,US,fulcrumcg.example,9001,,services,approved,6500,false
+V007,Granite IT Hardware,,78-1234560,US,granite-it.example,2468,,hardware,inactive,6200,false

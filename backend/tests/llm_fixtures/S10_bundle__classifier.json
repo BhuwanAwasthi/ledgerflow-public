@@ -1,0 +1,34 @@
+{
+  "scenario": "S10_bundle",
+  "agent": "classifier",
+  "documents": [
+    "S10_bundle_two_invoices.pdf"
+  ],
+  "calls": [
+    {
+      "action": "classify",
+      "schema": "ClassifierOutput",
+      "when": {
+        "document": "S10_bundle_two_invoices.pdf"
+      },
+      "output": {
+        "documents": [
+          {
+            "label": "invoice",
+            "confidence": 0.97,
+            "page_from": 1,
+            "page_to": 1,
+            "reason": "Page 1 is a separate invoice from a different vendor."
+          },
+          {
+            "label": "invoice",
+            "confidence": 0.97,
+            "page_from": 2,
+            "page_to": 2,
+            "reason": "Page 2 is a separate invoice from a different vendor."
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "scenario": "S04_duplicate_scan",
+  "agent": "classifier",
+  "documents": [
+    "S04_acme_scan_duplicate.pdf"
+  ],
+  "calls": [
+    {
+      "action": "classify",
+      "schema": "ClassifierOutput",
+      "when": {
+        "document": "S04_acme_scan_duplicate.pdf"
+      },
+      "output": {
+        "documents": [
+          {
+            "label": "invoice",
+            "confidence": 0.9,
+            "page_from": 1,
+            "page_to": 1,
+            "reason": "Has an invoice number, line items and a total due."
+          }
+        ]
+      }
+    }
+  ]
+}

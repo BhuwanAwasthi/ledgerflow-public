@@ -1,0 +1,18 @@
+{
+  "scenario": "S06_bank_change",
+  "agent": "comms",
+  "documents": [
+    "S06_evergreen_EP-5531.pdf"
+  ],
+  "calls": [
+    {
+      "action": "draft_request",
+      "schema": "CommsDraft",
+      "when": {},
+      "output": {
+        "subject": "Invoice EP-5531: please confirm your new bank details",
+        "body": "Hello Evergreen Packaging team,\n\nThank you for invoice EP-5531 for USD 2,381.50. The invoice asks us to pay an account ending 9910, which differs from the account we hold for you (ending 7788).\n\nTo protect both of us from payment fraud, please send a signed letter on your bank's letterhead confirming the account holder name and the new account details. You can upload it through the secure link below; no login is needed. We will also confirm the change by phone with a contact we already know before updating our records.\n\nWe will continue with the invoice as soon as the change is verified.\n\nKind regards,\nAccounts Payable, Demo Co."
+      }
+    }
+  ]
+}

@@ -33,7 +33,7 @@ endif
 check: lint test frontend-check
 
 fixtures:
-	$(BACKEND) run python scripts/generate_fixtures.py
+	$(BACKEND) run python -m scripts.generate_fixtures
 
 seed:
 	$(BACKEND) run python -m app.seed

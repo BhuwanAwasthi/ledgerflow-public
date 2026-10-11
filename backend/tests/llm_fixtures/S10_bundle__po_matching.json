@@ -1,0 +1,53 @@
+{
+  "scenario": "S10_bundle",
+  "agent": "po_matching",
+  "documents": [
+    "S10_bundle_two_invoices.pdf"
+  ],
+  "calls": [
+    {
+      "action": "match",
+      "schema": "POInferenceOutput",
+      "when": {
+        "invoice_number": "INV-A-2240"
+      },
+      "output": {
+        "candidates": [
+          {
+            "po_number": "PO-1007",
+            "line_similarity": 0.99,
+            "reason": "30 boxes of whiteboard markers match PO line 1.",
+            "pairs": [
+              {
+                "invoice_line_index": 0,
+                "po_line_no": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "action": "match",
+      "schema": "POInferenceOutput",
+      "when": {
+        "invoice_number": "CL-781"
+      },
+      "output": {
+        "candidates": [
+          {
+            "po_number": "PO-1003",
+            "line_similarity": 0.98,
+            "reason": "One LTL shipment Chicago to Dallas matches PO line 1.",
+            "pairs": [
+              {
+                "invoice_line_index": 0,
+                "po_line_no": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "scenario": "S03_implied_po",
+  "agent": "decision",
+  "documents": [
+    "S03_fulcrum_FCG-311.pdf"
+  ],
+  "calls": [
+    {
+      "action": "decide",
+      "schema": "DecisionExplanation",
+      "when": {
+        "decision": "needs_review"
+      },
+      "output": {
+        "summary": "Needs review: Fulcrum Consulting invoice FCG-311 for USD 6,000.00 quotes no PO number. The best match is PO-1004, raised from quote Q-77 for the same 40 hours at 150.00; we pre-linked it, but an inferred PO always needs a person to confirm.",
+        "next_step": "Confirm PO-1004 and approve, or link a different PO."
+      }
+    }
+  ]
+}

@@ -103,6 +103,7 @@ class Vendor(Base):
         String(16), default="approved"
     )  # approved|pending_docs|rejected|inactive
     default_gl: Mapped[str | None] = mapped_column(String(16))
+    non_po_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = _ts()
 
 
@@ -128,6 +129,7 @@ class PurchaseOrder(Base):
     status: Mapped[str] = mapped_column(String(16), default="open")  # open|closed
     created_at: Mapped[datetime] = _ts()
     approved_by: Mapped[str | None] = mapped_column(String(128))
+    notes: Mapped[str | None] = mapped_column(Text)  # e.g. "Raised from quote Q-77" (implied-PO evidence)
 
 
 class POLine(Base):
@@ -181,6 +183,7 @@ class Case(Base):
     created_at: Mapped[datetime] = _ts()
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
     sla_due_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    seed: Mapped[bool] = mapped_column(Boolean, default=False)  # seeded demo history (labelled in the UI)
 
 
 class Document(Base):

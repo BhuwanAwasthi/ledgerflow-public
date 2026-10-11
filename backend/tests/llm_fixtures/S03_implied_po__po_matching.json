@@ -1,0 +1,40 @@
+{
+  "scenario": "S03_implied_po",
+  "agent": "po_matching",
+  "documents": [
+    "S03_fulcrum_FCG-311.pdf"
+  ],
+  "calls": [
+    {
+      "action": "match",
+      "schema": "POInferenceOutput",
+      "when": {},
+      "output": {
+        "candidates": [
+          {
+            "po_number": "PO-1004",
+            "line_similarity": 0.95,
+            "reason": "40 hours of process improvement consulting match line 1, and quote Q-77 on the invoice is the quote this PO was raised from.",
+            "pairs": [
+              {
+                "invoice_line_index": 0,
+                "po_line_no": 1
+              }
+            ]
+          },
+          {
+            "po_number": "PO-1006",
+            "line_similarity": 0.08,
+            "reason": "A one-day leadership workshop does not correspond to 40 hours of consulting.",
+            "pairs": [
+              {
+                "invoice_line_index": 0,
+                "po_line_no": null
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

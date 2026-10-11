@@ -1,0 +1,27 @@
+{
+  "scenario": "S07_non_po",
+  "agent": "classifier",
+  "documents": [
+    "S07_delta_DF-2026-10.pdf"
+  ],
+  "calls": [
+    {
+      "action": "classify",
+      "schema": "ClassifierOutput",
+      "when": {
+        "document": "S07_delta_DF-2026-10.pdf"
+      },
+      "output": {
+        "documents": [
+          {
+            "label": "invoice",
+            "confidence": 0.97,
+            "page_from": 1,
+            "page_to": 1,
+            "reason": "Has an invoice number, line items and a total due."
+          }
+        ]
+      }
+    }
+  ]
+}

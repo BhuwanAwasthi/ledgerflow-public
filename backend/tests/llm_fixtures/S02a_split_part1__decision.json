@@ -1,0 +1,20 @@
+{
+  "scenario": "S02a_split_part1",
+  "agent": "decision",
+  "documents": [
+    "S02a_brightline_BL-0091.pdf"
+  ],
+  "calls": [
+    {
+      "action": "decide",
+      "schema": "DecisionExplanation",
+      "when": {
+        "decision": "auto_approve"
+      },
+      "output": {
+        "summary": "Auto-approved: Brightline Software invoice BL-0091 for USD 6,000.00 bills 60 of the 100 licences on PO-1001, leaving 4,000.00 on the PO. The vendor, bank account and unit price all match.",
+        "next_step": "The ERP template is final and ready to export."
+      }
+    }
+  ]
+}

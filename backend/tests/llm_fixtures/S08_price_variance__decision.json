@@ -1,0 +1,20 @@
+{
+  "scenario": "S08_price_variance",
+  "agent": "decision",
+  "documents": [
+    "S08_coastal_CL-778.pdf"
+  ],
+  "calls": [
+    {
+      "action": "decide",
+      "schema": "DecisionExplanation",
+      "when": {
+        "decision": "needs_review"
+      },
+      "output": {
+        "summary": "Needs review: Coastal Logistics invoice CL-778 for USD 2,620.00 charges 1,310.00 per shipment against 1,250.00 on PO-1003, 4.8% and 60.00 per unit higher, beyond the 2% and 50.00 tolerance.",
+        "next_step": "Approve the new rate, or ask the vendor for a credit note."
+      }
+    }
+  ]
+}

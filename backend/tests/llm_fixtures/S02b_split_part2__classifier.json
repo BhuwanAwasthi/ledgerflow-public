@@ -1,0 +1,27 @@
+{
+  "scenario": "S02b_split_part2",
+  "agent": "classifier",
+  "documents": [
+    "S02b_brightline_BL-0107.pdf"
+  ],
+  "calls": [
+    {
+      "action": "classify",
+      "schema": "ClassifierOutput",
+      "when": {
+        "document": "S02b_brightline_BL-0107.pdf"
+      },
+      "output": {
+        "documents": [
+          {
+            "label": "invoice",
+            "confidence": 0.97,
+            "page_from": 1,
+            "page_to": 1,
+            "reason": "Has an invoice number, line items and a total due."
+          }
+        ]
+      }
+    }
+  ]
+}

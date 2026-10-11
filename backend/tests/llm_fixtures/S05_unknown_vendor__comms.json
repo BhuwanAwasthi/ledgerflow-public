@@ -1,0 +1,20 @@
+{
+  "scenario": "S05_unknown_vendor",
+  "agent": "comms",
+  "documents": [
+    "S05_novaprint_NPS-0042.pdf",
+    "S05_novaprint_W9.pdf",
+    "S05_novaprint_bank_letter.pdf"
+  ],
+  "calls": [
+    {
+      "action": "draft_request",
+      "schema": "CommsDraft",
+      "when": {},
+      "output": {
+        "subject": "Invoice NPS-0042: vendor set-up documents needed",
+        "body": "Hello Nova Print Studio team,\n\nThank you for invoice NPS-0042 for USD 1,277.35. You are not yet set up as a supplier in our system, so before we can process it we need two documents:\n\n1. A completed and signed W-9 for Nova Print Studio LLC.\n2. A letter from your bank, on bank letterhead, confirming the account holder name and the account the invoice asks us to pay.\n\nPlease upload both through the secure link below; no login is needed. Once we have verified them we will continue with your invoice.\n\nKind regards,\nAccounts Payable, Demo Co."
+      }
+    }
+  ]
+}

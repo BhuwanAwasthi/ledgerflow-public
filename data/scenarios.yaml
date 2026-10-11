@@ -20,55 +20,69 @@ gl_accounts:
   - { code: "6600", name: Printing and Marketing, category: opex }
 
 vendors:
-  - { code: V001, legal_name: Acme Office Supplies Inc, tax_id: "12-3456789", email_domain: acme-office.example, bank_last4: "4321", category: supplies, default_gl: "6200", status: approved }
-  - { code: V002, legal_name: Brightline Software Inc, tax_id: "23-4567890", email_domain: brightline.example, bank_last4: "5566", category: software, default_gl: "6400", status: approved }
-  - { code: V003, legal_name: Coastal Logistics LLC, tax_id: "34-5678901", email_domain: coastallogistics.example, bank_last4: "1122", category: freight, default_gl: "5200", status: approved }
-  - { code: V004, legal_name: Delta Facilities Services, tax_id: "45-6789012", email_domain: deltafacilities.example, bank_last4: "3344", category: facilities, default_gl: "6100", status: approved, non_po_allowed: true }
-  - { code: V005, legal_name: Evergreen Packaging Co, tax_id: "56-7890123", email_domain: evergreenpack.example, bank_last4: "7788", category: packaging, default_gl: "5100", status: approved }
-  - { code: V006, legal_name: Fulcrum Consulting Group, tax_id: "67-8901234", email_domain: fulcrumcg.example, bank_last4: "9001", category: services, default_gl: "6500", status: approved }
-  - { code: V007, legal_name: Granite IT Hardware, tax_id: "78-1234560", email_domain: granite-it.example, bank_last4: "2468", category: hardware, default_gl: "6200", status: inactive }
+  - { code: V001, legal_name: Acme Office Supplies Inc, tax_id: "12-3456789", email_domain: acme-office.example, bank_last4: "4321", category: supplies, default_gl: "6200", status: approved, address: "2200 Commerce Ave, Dallas, TX 75201", bank_name: Lone Star Commercial Bank }
+  - { code: V002, legal_name: Brightline Software Inc, tax_id: "23-4567890", email_domain: brightline.example, bank_last4: "5566", category: software, default_gl: "6400", status: approved, address: "48 Harbor Point Rd, Boston, MA 02110", bank_name: Bayside Trust }
+  - { code: V003, legal_name: Coastal Logistics LLC, tax_id: "34-5678901", email_domain: coastallogistics.example, bank_last4: "1122", category: freight, default_gl: "5200", status: approved, address: "9100 Industrial Pkwy, Chicago, IL 60638", bank_name: Prairie National Bank }
+  - { code: V004, legal_name: Delta Facilities Services, tax_id: "45-6789012", email_domain: deltafacilities.example, bank_last4: "3344", category: facilities, default_gl: "6100", status: approved, non_po_allowed: true, address: "715 Riverside Dr, Austin, TX 78704", bank_name: Hill Country Bank }
+  - { code: V005, legal_name: Evergreen Packaging Co, tax_id: "56-7890123", email_domain: evergreenpack.example, bank_last4: "7788", category: packaging, default_gl: "5100", status: approved, address: "3300 Mill Creek Rd, Portland, OR 97210", bank_name: Cascade Federal Bank }
+  - { code: V006, legal_name: Fulcrum Consulting Group, tax_id: "67-8901234", email_domain: fulcrumcg.example, bank_last4: "9001", category: services, default_gl: "6500", status: approved, address: "1 Liberty Plaza, Suite 1200, New York, NY 10006", bank_name: Hudson Valley Bank }
+  - { code: V007, legal_name: Granite IT Hardware, tax_id: "78-1234560", email_domain: granite-it.example, bank_last4: "2468", category: hardware, default_gl: "6200", status: inactive, address: "60 Granite Way, Denver, CO 80202", bank_name: Front Range Bank }
   # NOT in master (unknown vendor scenario): Nova Print Studio LLC, tax 78-9012345, novaprint.example, bank 6070
 
 purchase_orders:
   - po_number: PO-1001
+    created_at: "2026-08-20"
+    approved_by: Priya Raman (Procurement)
     vendor: V002
     lines:
       - { line_no: 1, description: "Brightline Analytics licence (annual)", qty: 100, unit_price: 100.00, gl_code: "6400" }
   - po_number: PO-1002
+    created_at: "2026-09-01"
+    approved_by: Priya Raman (Procurement)
     vendor: V001
     lines:
       - { line_no: 1, description: "Copy paper A4 80gsm, ream", qty: 50, unit_price: 6.50, gl_code: "6200" }
       - { line_no: 2, description: "Toner cartridge BL-720", qty: 20, unit_price: 82.00, gl_code: "6200" }
       - { line_no: 3, description: "Ergonomic task chair", qty: 10, unit_price: 245.00, gl_code: "6210" }
   - po_number: PO-1003
+    created_at: "2026-09-05"
+    approved_by: Priya Raman (Procurement)
     vendor: V003
     lines:
       - { line_no: 1, description: "Freight LTL shipment Chicago to Dallas", qty: 4, unit_price: 1250.00, gl_code: "5200" }
   - po_number: PO-1004
+    created_at: "2026-08-25"
+    approved_by: Priya Raman (Procurement)
     vendor: V006
     notes: "Raised from quote Q-77"
     lines:
       - { line_no: 1, description: "Process improvement consulting (per hour)", qty: 40, unit_price: 150.00, gl_code: "6500" }
   - po_number: PO-1005
+    created_at: "2026-09-10"
+    approved_by: Priya Raman (Procurement)
     vendor: V005
     lines:
       - { line_no: 1, description: "Corrugated shipping box 12x10x8", qty: 2000, unit_price: 1.10, gl_code: "5100" }
   - po_number: PO-1006
+    created_at: "2026-07-30"
+    approved_by: Priya Raman (Procurement)
     vendor: V006
     lines:
       - { line_no: 1, description: "Leadership workshop (1 day)", qty: 1, unit_price: 2500.00, gl_code: "6500" }
   - po_number: PO-1007
+    created_at: "2026-09-22"
+    approved_by: Priya Raman (Procurement)
     vendor: V001
     lines:
       - { line_no: 1, description: "Whiteboard markers, box of 12", qty: 30, unit_price: 12.00, gl_code: "6200" }
 
 grns:
-  - { po_number: PO-1002, line_no: 1, qty_received: 50 }
-  - { po_number: PO-1002, line_no: 2, qty_received: 20 }
-  - { po_number: PO-1002, line_no: 3, qty_received: 10 }
-  - { po_number: PO-1003, line_no: 1, qty_received: 3 }
-  - { po_number: PO-1005, line_no: 1, qty_received: 2000 }
-  - { po_number: PO-1007, line_no: 1, qty_received: 30 }
+  - { po_number: PO-1002, line_no: 1, qty_received: 50, received_at: "2026-09-28" }
+  - { po_number: PO-1002, line_no: 2, qty_received: 20, received_at: "2026-09-28" }
+  - { po_number: PO-1002, line_no: 3, qty_received: 10, received_at: "2026-09-30" }
+  - { po_number: PO-1003, line_no: 1, qty_received: 3, received_at: "2026-09-26" }
+  - { po_number: PO-1005, line_no: 1, qty_received: 2000, received_at: "2026-10-01" }
+  - { po_number: PO-1007, line_no: 1, qty_received: 30, received_at: "2026-10-06" }
 
 # Recommended demo run order (balances depend on it):
 run_order: [S01_happy, S02a_split_part1, S02b_split_part2, S03_implied_po, S04_duplicate_scan, S05_unknown_vendor, S06_bank_change, S07_non_po, S08_price_variance, S10_bundle, S09_missing_fields]
@@ -160,7 +174,7 @@ scenarios:
     file: S05_novaprint_NPS-0042.pdf
     render: clean
     expect: { decision: on_hold, vendor_status: new_vendor, after_onboarding: { decision: needs_review, gl: "6600" } }
-    new_vendor: { legal_name: Nova Print Studio LLC, tax_id: "78-9012345", email_domain: novaprint.example, bank_last4: "6070", category: printing }
+    new_vendor: { legal_name: Nova Print Studio LLC, tax_id: "78-9012345", email_domain: novaprint.example, bank_last4: "6070", category: printing, address: "410 Pine St, Seattle, WA 98101", bank_name: Puget Sound Bank }
     supporting_files:
       - { file: S05_novaprint_W9.pdf, kind: tax_form }
       - { file: S05_novaprint_bank_letter.pdf, kind: bank_letter, account_holder: Nova Print Studio LLC, bank_last4: "6070" }

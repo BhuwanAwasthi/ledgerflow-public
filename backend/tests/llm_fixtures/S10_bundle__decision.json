@@ -1,0 +1,33 @@
+{
+  "scenario": "S10_bundle",
+  "agent": "decision",
+  "documents": [
+    "S10_bundle_two_invoices.pdf"
+  ],
+  "calls": [
+    {
+      "action": "decide",
+      "schema": "DecisionExplanation",
+      "when": {
+        "invoice_number": "INV-A-2240",
+        "decision": "auto_approve"
+      },
+      "output": {
+        "summary": "Auto-approved: Acme Office Supplies invoice INV-A-2240 for USD 389.70 matches PO-1007 (30 boxes of whiteboard markers, all received), and the vendor and bank details match.",
+        "next_step": "The ERP template is final and ready to export."
+      }
+    },
+    {
+      "action": "decide",
+      "schema": "DecisionExplanation",
+      "when": {
+        "invoice_number": "CL-781",
+        "decision": "auto_approve"
+      },
+      "output": {
+        "summary": "Auto-approved: Coastal Logistics invoice CL-781 for USD 1,250.00 bills one shipment on PO-1003 at the PO price, and the vendor and bank details match.",
+        "next_step": "The ERP template is final and ready to export."
+      }
+    }
+  ]
+}

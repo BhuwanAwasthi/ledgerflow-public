@@ -1,0 +1,31 @@
+{
+  "scenario": "S02b_split_part2",
+  "agent": "decision",
+  "documents": [
+    "S02b_brightline_BL-0107.pdf"
+  ],
+  "calls": [
+    {
+      "action": "decide",
+      "schema": "DecisionExplanation",
+      "when": {
+        "decision": "needs_review"
+      },
+      "output": {
+        "summary": "Needs review: Brightline Software invoice BL-0107 for USD 4,300.00 is 300.00 (7.5%) over the 4,000.00 left on PO-1001, above the 2% tolerance. It also bills a Premium support add-on that is not on the PO.",
+        "next_step": "Approve if procurement amended the PO, or add a remark with the correction."
+      }
+    },
+    {
+      "action": "decide",
+      "schema": "DecisionExplanation",
+      "when": {
+        "decision": "auto_approve"
+      },
+      "output": {
+        "summary": "After your changes invoice BL-0107 passes every check: the PO-1001 amendment to 10,500.00 covers the 4,300.00 subtotal, and the Premium support line is accepted and coded to 6410 Software Support.",
+        "next_step": "Review the updated template (v2) and approve to finalise it."
+      }
+    }
+  ]
+}

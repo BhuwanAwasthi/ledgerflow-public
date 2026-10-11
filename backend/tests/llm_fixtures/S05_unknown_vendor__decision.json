@@ -1,0 +1,22 @@
+{
+  "scenario": "S05_unknown_vendor",
+  "agent": "decision",
+  "documents": [
+    "S05_novaprint_NPS-0042.pdf",
+    "S05_novaprint_W9.pdf",
+    "S05_novaprint_bank_letter.pdf"
+  ],
+  "calls": [
+    {
+      "action": "decide",
+      "schema": "DecisionExplanation",
+      "when": {
+        "decision": "needs_review"
+      },
+      "output": {
+        "summary": "Needs review: Nova Print Studio LLC is a newly onboarded vendor and invoice NPS-0042 for USD 1,277.35 has no PO. We suggest coding both lines to 6600 Printing and Marketing.",
+        "next_step": "Confirm the coding with the budget owner and approve."
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "scenario": "S04_duplicate_scan",
+  "agent": "comms",
+  "documents": [
+    "S04_acme_scan_duplicate.pdf"
+  ],
+  "calls": [
+    {
+      "action": "draft_rejection",
+      "schema": "CommsDraft",
+      "when": {},
+      "output": {
+        "subject": "Invoice INV A2207: duplicate of INV-A-2207",
+        "body": "Hello Acme Office Supplies team,\n\nWe received a scanned copy of invoice INV A2207 for USD 4,779.24. It matches invoice INV-A-2207, dated 2 October 2026, which we have already received for the same amount, so we have closed this copy as a duplicate.\n\nIf it was sent twice by mistake, no action is needed. If it is a different charge, please reply with a corrected invoice that has its own number.\n\nKind regards,\nAccounts Payable, Demo Co."
+      }
+    }
+  ]
+}

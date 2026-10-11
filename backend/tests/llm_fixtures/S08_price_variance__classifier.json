@@ -1,0 +1,27 @@
+{
+  "scenario": "S08_price_variance",
+  "agent": "classifier",
+  "documents": [
+    "S08_coastal_CL-778.pdf"
+  ],
+  "calls": [
+    {
+      "action": "classify",
+      "schema": "ClassifierOutput",
+      "when": {
+        "document": "S08_coastal_CL-778.pdf"
+      },
+      "output": {
+        "documents": [
+          {
+            "label": "invoice",
+            "confidence": 0.97,
+            "page_from": 1,
+            "page_to": 1,
+            "reason": "Has an invoice number, line items and a total due."
+          }
+        ]
+      }
+    }
+  ]
+}

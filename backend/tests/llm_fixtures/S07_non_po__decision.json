@@ -1,0 +1,20 @@
+{
+  "scenario": "S07_non_po",
+  "agent": "decision",
+  "documents": [
+    "S07_delta_DF-2026-10.pdf"
+  ],
+  "calls": [
+    {
+      "action": "decide",
+      "schema": "DecisionExplanation",
+      "when": {
+        "decision": "needs_review"
+      },
+      "output": {
+        "summary": "Needs review: Delta Facilities Services invoice DF-2026-10 for USD 2,150.00 has no PO. We suggest coding it to 6100 Facilities Maintenance, the vendor's usual account; non-PO spend needs budget-owner approval.",
+        "next_step": "Approve once the budget owner agrees."
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "scenario": "S06_bank_change",
+  "agent": "po_matching",
+  "documents": [
+    "S06_evergreen_EP-5531.pdf"
+  ],
+  "calls": [
+    {
+      "action": "match",
+      "schema": "POInferenceOutput",
+      "when": {},
+      "output": {
+        "candidates": [
+          {
+            "po_number": "PO-1005",
+            "line_similarity": 0.99,
+            "reason": "2,000 corrugated shipping boxes match PO line 1 exactly.",
+            "pairs": [
+              {
+                "invoice_line_index": 0,
+                "po_line_no": 1
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

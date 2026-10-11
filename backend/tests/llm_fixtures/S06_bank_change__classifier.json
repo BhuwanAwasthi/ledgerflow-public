@@ -1,0 +1,27 @@
+{
+  "scenario": "S06_bank_change",
+  "agent": "classifier",
+  "documents": [
+    "S06_evergreen_EP-5531.pdf"
+  ],
+  "calls": [
+    {
+      "action": "classify",
+      "schema": "ClassifierOutput",
+      "when": {
+        "document": "S06_evergreen_EP-5531.pdf"
+      },
+      "output": {
+        "documents": [
+          {
+            "label": "invoice",
+            "confidence": 0.97,
+            "page_from": 1,
+            "page_to": 1,
+            "reason": "Has an invoice number, line items and a total due."
+          }
+        ]
+      }
+    }
+  ]
+}

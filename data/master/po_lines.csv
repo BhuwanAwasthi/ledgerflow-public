@@ -1,0 +1,10 @@
+po_number,line_no,description,qty,unit_price,amount,gl_code
+PO-1001,1,Brightline Analytics licence (annual),100,100.00,10000.00,6400
+PO-1002,1,"Copy paper A4 80gsm, ream",50,6.50,325.00,6200
+PO-1002,2,Toner cartridge BL-720,20,82.00,1640.00,6200
+PO-1002,3,Ergonomic task chair,10,245.00,2450.00,6210
+PO-1003,1,Freight LTL shipment Chicago to Dallas,4,1250.00,5000.00,5200
+PO-1004,1,Process improvement consulting (per hour),40,150.00,6000.00,6500
+PO-1005,1,Corrugated shipping box 12x10x8,2000,1.10,2200.00,5100
+PO-1006,1,Leadership workshop (1 day),1,2500.00,2500.00,6500
+PO-1007,1,"Whiteboard markers, box of 12",30,12.00,360.00,6200

@@ -1,0 +1,133 @@
+{
+  "scenario": "S08_price_variance",
+  "agent": "extraction",
+  "documents": [
+    "S08_coastal_CL-778.pdf"
+  ],
+  "calls": [
+    {
+      "action": "extract",
+      "schema": "InvoiceExtraction",
+      "when": {},
+      "output": {
+        "vendor_name": "Coastal Logistics LLC",
+        "vendor_address": "9100 Industrial Pkwy, Chicago, IL 60638",
+        "vendor_tax_id": "34-5678901",
+        "vendor_email": "billing@coastallogistics.example",
+        "remit_bank": {
+          "bank_name": "Prairie National Bank",
+          "account_last4": "1122",
+          "iban": null
+        },
+        "invoice_number": "CL-778",
+        "invoice_date": "2026-10-07",
+        "due_date": "2026-11-06",
+        "payment_terms": "Net 30",
+        "currency": "USD",
+        "po_reference": "PO-1003",
+        "other_references": [],
+        "bill_to": "Demo Co., 100 Market Street, Austin, TX 78701",
+        "lines": [
+          {
+            "description": "LTL freight Chicago-Dallas, fuel surcharge incl.",
+            "qty": 2,
+            "unit_price": 1310.0,
+            "amount": 2620.0,
+            "tax_rate": 0,
+            "uom": null
+          }
+        ],
+        "subtotal": 2620.0,
+        "tax_total": 0.0,
+        "tax_inclusive": false,
+        "shipping": null,
+        "total": 2620.0,
+        "notes": null,
+        "confidence": {
+          "vendor_name": 0.99,
+          "vendor_address": 0.96,
+          "vendor_tax_id": 0.98,
+          "vendor_email": 0.97,
+          "remit_bank": 0.96,
+          "invoice_number": 0.98,
+          "invoice_date": 0.98,
+          "due_date": 0.98,
+          "payment_terms": 0.97,
+          "currency": 0.95,
+          "po_reference": 0.98,
+          "bill_to": 0.97,
+          "lines": 0.97,
+          "subtotal": 0.98,
+          "tax_total": 0.98,
+          "shipping": null,
+          "total": 0.99
+        },
+        "location": {
+          "vendor_name": {
+            "page": 1,
+            "bbox": [
+              0.6918,
+              0.0548,
+              0.9183,
+              0.069
+            ]
+          },
+          "invoice_number": {
+            "page": 1,
+            "bbox": [
+              0.2369,
+              0.1679,
+              0.2899,
+              0.1795
+            ]
+          },
+          "invoice_date": {
+            "page": 1,
+            "bbox": [
+              0.2369,
+              0.1843,
+              0.334,
+              0.1959
+            ]
+          },
+          "po_reference": {
+            "page": 1,
+            "bbox": [
+              0.2369,
+              0.2336,
+              0.2987,
+              0.2452
+            ]
+          },
+          "subtotal": {
+            "page": 1,
+            "bbox": [
+              0.8026,
+              0.3384,
+              0.9085,
+              0.3499
+            ]
+          },
+          "tax_total": {
+            "page": 1,
+            "bbox": [
+              0.8379,
+              0.3586,
+              0.9085,
+              0.3702
+            ]
+          },
+          "total": {
+            "page": 1,
+            "bbox": [
+              0.7791,
+              0.3818,
+              0.9085,
+              0.396
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

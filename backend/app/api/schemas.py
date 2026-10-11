@@ -110,6 +110,7 @@ class CaseOut(_ORM):
     created_at: datetime
     updated_at: datetime
     sla_due_at: datetime | None
+    seed: bool = False
 
 
 class CaseDetailOut(CaseOut):
@@ -132,3 +133,21 @@ class ReviewIn(BaseModel):
     action: Literal["approve", "remark", "reject", "request_info"]
     text: str | None = None
     actor: str = "AP Reviewer"
+
+
+class FixtureFileOut(BaseModel):
+    file: str
+    kind: str
+    available: bool
+
+
+class FixtureOut(BaseModel):
+    id: str
+    title: str
+    file: str
+    render: str
+    run_order: int | None
+    expect: dict[str, Any]
+    demo_remark: str | None
+    available: bool
+    supporting_files: list[FixtureFileOut]

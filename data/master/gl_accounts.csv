@@ -1,0 +1,10 @@
+code,name,category
+5100,Packaging Materials,cogs
+5200,Freight In,cogs
+6100,Facilities Maintenance,opex
+6200,Office Supplies,opex
+6210,Office Furniture,opex
+6400,Software Subscriptions,opex
+6410,Software Support,opex
+6500,Professional Services,opex
+6600,Printing and Marketing,opex

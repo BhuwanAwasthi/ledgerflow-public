@@ -1,0 +1,149 @@
+{
+  "scenario": "S01_happy",
+  "agent": "extraction",
+  "documents": [
+    "S01_acme_INV-A-2207.pdf"
+  ],
+  "calls": [
+    {
+      "action": "extract",
+      "schema": "InvoiceExtraction",
+      "when": {},
+      "output": {
+        "vendor_name": "Acme Office Supplies Inc",
+        "vendor_address": "2200 Commerce Ave, Dallas, TX 75201",
+        "vendor_tax_id": "12-3456789",
+        "vendor_email": "billing@acme-office.example",
+        "remit_bank": {
+          "bank_name": "Lone Star Commercial Bank",
+          "account_last4": "4321",
+          "iban": null
+        },
+        "invoice_number": "INV-A-2207",
+        "invoice_date": "2026-10-02",
+        "due_date": "2026-11-01",
+        "payment_terms": "Net 30",
+        "currency": "USD",
+        "po_reference": "PO-1002",
+        "other_references": [],
+        "bill_to": "Demo Co., 100 Market Street, Austin, TX 78701",
+        "lines": [
+          {
+            "description": "Copy paper A4 80gsm, ream",
+            "qty": 50,
+            "unit_price": 6.5,
+            "amount": 325.0,
+            "tax_rate": 8.25,
+            "uom": null
+          },
+          {
+            "description": "Toner cartridge BL-720",
+            "qty": 20,
+            "unit_price": 82.0,
+            "amount": 1640.0,
+            "tax_rate": 8.25,
+            "uom": null
+          },
+          {
+            "description": "Ergonomic task chair",
+            "qty": 10,
+            "unit_price": 245.0,
+            "amount": 2450.0,
+            "tax_rate": 8.25,
+            "uom": null
+          }
+        ],
+        "subtotal": 4415.0,
+        "tax_total": 364.24,
+        "tax_inclusive": false,
+        "shipping": null,
+        "total": 4779.24,
+        "notes": null,
+        "confidence": {
+          "vendor_name": 0.99,
+          "vendor_address": 0.96,
+          "vendor_tax_id": 0.98,
+          "vendor_email": 0.97,
+          "remit_bank": 0.96,
+          "invoice_number": 0.98,
+          "invoice_date": 0.98,
+          "due_date": 0.98,
+          "payment_terms": 0.97,
+          "currency": 0.95,
+          "po_reference": 0.98,
+          "bill_to": 0.97,
+          "lines": 0.97,
+          "subtotal": 0.98,
+          "tax_total": 0.98,
+          "shipping": null,
+          "total": 0.99
+        },
+        "location": {
+          "vendor_name": {
+            "page": 1,
+            "bbox": [
+              0.1732,
+              0.062,
+              0.4478,
+              0.08
+            ]
+          },
+          "invoice_number": {
+            "page": 1,
+            "bbox": [
+              0.8407,
+              0.1073,
+              0.9183,
+              0.1189
+            ]
+          },
+          "invoice_date": {
+            "page": 1,
+            "bbox": [
+              0.8325,
+              0.125,
+              0.9183,
+              0.1366
+            ]
+          },
+          "po_reference": {
+            "page": 1,
+            "bbox": [
+              0.8594,
+              0.178,
+              0.9183,
+              0.1896
+            ]
+          },
+          "subtotal": {
+            "page": 1,
+            "bbox": [
+              0.8431,
+              0.3826,
+              0.9085,
+              0.3941
+            ]
+          },
+          "tax_total": {
+            "page": 1,
+            "bbox": [
+              0.8553,
+              0.4028,
+              0.9085,
+              0.4143
+            ]
+          },
+          "total": {
+            "page": 1,
+            "bbox": [
+              0.8285,
+              0.426,
+              0.9085,
+              0.4402
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "scenario": "S02a_split_part1",
+  "agent": "extraction",
+  "documents": [
+    "S02a_brightline_BL-0091.pdf"
+  ],
+  "calls": [
+    {
+      "action": "extract",
+      "schema": "InvoiceExtraction",
+      "when": {},
+      "output": {
+        "vendor_name": "Brightline Software Inc",
+        "vendor_address": "48 Harbor Point Rd, Boston, MA 02110",
+        "vendor_tax_id": "23-4567890",
+        "vendor_email": "billing@brightline.example",
+        "remit_bank": {
+          "bank_name": "Bayside Trust",
+          "account_last4": "5566",
+          "iban": null
+        },
+        "invoice_number": "BL-0091",
+        "invoice_date": "2026-09-15",
+        "due_date": "2026-10-15",
+        "payment_terms": "Net 30",
+        "currency": "USD",
+        "po_reference": "PO-1001",
+        "other_references": [],
+        "bill_to": "Demo Co., 100 Market Street, Austin, TX 78701",
+        "lines": [
+          {
+            "description": "Brightline Analytics licence (annual) - tranche 1",
+            "qty": 60,
+            "unit_price": 100.0,
+            "amount": 6000.0,
+            "tax_rate": 0,
+            "uom": null
+          }
+        ],
+        "subtotal": 6000.0,
+        "tax_total": 0.0,
+        "tax_inclusive": false,
+        "shipping": null,
+        "total": 6000.0,
+        "notes": null,
+        "confidence": {
+          "vendor_name": 0.99,
+          "vendor_address": 0.96,
+          "vendor_tax_id": 0.98,
+          "vendor_email": 0.97,
+          "remit_bank": 0.96,
+          "invoice_number": 0.98,
+          "invoice_date": 0.98,
+          "due_date": 0.98,
+          "payment_terms": 0.97,
+          "currency": 0.95,
+          "po_reference": 0.98,
+          "bill_to": 0.97,
+          "lines": 0.97,
+          "subtotal": 0.98,
+          "tax_total": 0.98,
+          "shipping": null,
+          "total": 0.99
+        },
+        "location": {
+          "vendor_name": {
+            "page": 1,
+            "bbox": [
+              0.0817,
+              0.0454,
+              0.402,
+              0.0686
+            ]
+          },
+          "invoice_number": {
+            "page": 1,
+            "bbox": [
+              0.0948,
+              0.1745,
+              0.1583,
+              0.1874
+            ]
+          },
+          "invoice_date": {
+            "page": 1,
+            "bbox": [
+              0.3039,
+              0.1745,
+              0.3875,
+              0.1874
+            ]
+          },
+          "po_reference": {
+            "page": 1,
+            "bbox": [
+              0.0948,
+              0.2275,
+              0.1602,
+              0.2404
+            ]
+          },
+          "subtotal": {
+            "page": 1,
+            "bbox": [
+              0.8431,
+              0.452,
+              0.9085,
+              0.4636
+            ]
+          },
+          "tax_total": {
+            "page": 1,
+            "bbox": [
+              0.8717,
+              0.4722,
+              0.9085,
+              0.4838
+            ]
+          },
+          "total": {
+            "page": 1,
+            "bbox": [
+              0.8285,
+              0.4955,
+              0.9085,
+              0.5096
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

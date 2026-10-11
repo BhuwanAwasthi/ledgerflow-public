@@ -1,0 +1,27 @@
+{
+  "scenario": "S01_happy",
+  "agent": "classifier",
+  "documents": [
+    "S01_acme_INV-A-2207.pdf"
+  ],
+  "calls": [
+    {
+      "action": "classify",
+      "schema": "ClassifierOutput",
+      "when": {
+        "document": "S01_acme_INV-A-2207.pdf"
+      },
+      "output": {
+        "documents": [
+          {
+            "label": "invoice",
+            "confidence": 0.97,
+            "page_from": 1,
+            "page_to": 1,
+            "reason": "Has an invoice number, line items and a total due."
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "scenario": "S09_missing_fields",
+  "agent": "comms",
+  "documents": [
+    "S09_coastal_scan_missing.pdf"
+  ],
+  "calls": [
+    {
+      "action": "draft_request",
+      "schema": "CommsDraft",
+      "when": {},
+      "output": {
+        "subject": "Invoice for USD 1,250.00 (PO-1003): invoice number and date needed",
+        "body": "Hello Coastal Logistics team,\n\nWe received a scanned invoice for USD 1,250.00 against PO-1003 for an LTL shipment from Chicago to Dallas. We cannot process it yet because two details are missing from the copy we received:\n\n1. The invoice number.\n2. The invoice date.\n\nPlease upload a corrected copy that shows both through the secure link below; no login is needed. We will pick the invoice up again as soon as it arrives.\n\nKind regards,\nAccounts Payable, Demo Co."
+      }
+    }
+  ]
+}

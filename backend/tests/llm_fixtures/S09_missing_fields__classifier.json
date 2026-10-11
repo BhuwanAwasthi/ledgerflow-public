@@ -1,0 +1,27 @@
+{
+  "scenario": "S09_missing_fields",
+  "agent": "classifier",
+  "documents": [
+    "S09_coastal_scan_missing.pdf"
+  ],
+  "calls": [
+    {
+      "action": "classify",
+      "schema": "ClassifierOutput",
+      "when": {
+        "document": "S09_coastal_scan_missing.pdf"
+      },
+      "output": {
+        "documents": [
+          {
+            "label": "invoice",
+            "confidence": 0.9,
+            "page_from": 1,
+            "page_to": 1,
+            "reason": "Looks like a vendor invoice with line items and a total, but the invoice number is missing."
+          }
+        ]
+      }
+    }
+  ]
+}

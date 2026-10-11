@@ -1,0 +1,65 @@
+{
+  "scenario": "S05_unknown_vendor",
+  "agent": "classifier",
+  "documents": [
+    "S05_novaprint_NPS-0042.pdf",
+    "S05_novaprint_W9.pdf",
+    "S05_novaprint_bank_letter.pdf"
+  ],
+  "calls": [
+    {
+      "action": "classify",
+      "schema": "ClassifierOutput",
+      "when": {
+        "document": "S05_novaprint_NPS-0042.pdf"
+      },
+      "output": {
+        "documents": [
+          {
+            "label": "invoice",
+            "confidence": 0.97,
+            "page_from": 1,
+            "page_to": 1,
+            "reason": "Has an invoice number, line items and a total due."
+          }
+        ]
+      }
+    },
+    {
+      "action": "classify",
+      "schema": "ClassifierOutput",
+      "when": {
+        "document": "S05_novaprint_W9.pdf"
+      },
+      "output": {
+        "documents": [
+          {
+            "label": "tax_form",
+            "confidence": 0.96,
+            "page_from": 1,
+            "page_to": 1,
+            "reason": "A completed W-9 with the vendor's name, address and EIN."
+          }
+        ]
+      }
+    },
+    {
+      "action": "classify",
+      "schema": "ClassifierOutput",
+      "when": {
+        "document": "S05_novaprint_bank_letter.pdf"
+      },
+      "output": {
+        "documents": [
+          {
+            "label": "bank_letter",
+            "confidence": 0.96,
+            "page_from": 1,
+            "page_to": 1,
+            "reason": "A bank letter on letterhead confirming the account holder and account number."
+          }
+        ]
+      }
+    }
+  ]
+}

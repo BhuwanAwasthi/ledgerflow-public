@@ -1,0 +1,20 @@
+{
+  "scenario": "S01_happy",
+  "agent": "decision",
+  "documents": [
+    "S01_acme_INV-A-2207.pdf"
+  ],
+  "calls": [
+    {
+      "action": "decide",
+      "schema": "DecisionExplanation",
+      "when": {
+        "decision": "auto_approve"
+      },
+      "output": {
+        "summary": "Auto-approved: Acme Office Supplies invoice INV-A-2207 for USD 4,779.24 matches PO-1002 line for line (subtotal 4,415.00), and every item was received in full. The vendor, its bank account and the prices all match our records.",
+        "next_step": "The ERP template is final and ready to export."
+      }
+    }
+  ]
+}
