@@ -24,15 +24,46 @@ INVOICE_ROUTE = "case_invoice"
 
 
 class ClassifierAgent(Agent):
+    async def classify_document(
+        self, ctx: AgentContext, doc: Document, schema: dict[str, Any] | None = None
+    ) -> tuple[list[ClassifiedDocument], dict[str, Any]]:
+        """One model call for one rendered file: cleaned page-range entries + call metrics. Also used by the
+        vendor portal for uploaded onboarding documents."""
+        assert ctx.storage is not None, "classifier needs storage"
+        n_images = int(ctx.params["pages_per_document"])
+        max_chars = int(ctx.params["max_text_chars"])
+        pages = list(range(1, (doc.pages or 1) + 1))
+        texts = await asyncio.to_thread(page_texts, ctx.storage, doc)
+        pngs = await asyncio.to_thread(page_pngs, ctx.storage, doc, pages[:n_images])
+        content = [
+            text_part(
+                f"File: {doc.filename} ({doc.pages} page(s)). "
+                + (
+                    f"Text layer:\n{text_block(texts, pages, max_chars)}"
+                    if doc.has_text_layer
+                    else "No text layer (scanned): read the page images."
+                )
+            ),
+            *(image_part(p) for p in pngs),
+        ]
+        out, metrics = await self.call_llm(
+            ctx,
+            "classify",
+            ClassifierOutput,
+            content,
+            prompt_vars={"labels": ctx.config.document_types.labels},
+            json_schema=schema or label_schema(ctx),
+            context={"document": doc.filename},
+        )
+        assert isinstance(out, ClassifierOutput)
+        return _clean(out.documents, doc.pages or 1), metrics
+
     async def run(self, action: str, ctx: AgentContext) -> AgentResult:
         assert ctx.storage is not None, "classifier needs storage"
         dt = ctx.config.document_types
         routes = {lbl.id: lbl.route for lbl in dt.labels}
         fallback = "other" if "other" in routes else dt.labels[-1].id
-        schema = strict_json_schema(ClassifierOutput)
-        schema["$defs"]["ClassifiedDocument"]["properties"]["label"]["enum"] = list(routes)
-        n_images = int(ctx.params["pages_per_document"])
-        max_chars = int(ctx.params["max_text_chars"])
+        schema = label_schema(ctx)
 
         calls: list[dict[str, Any]] = []
         reasoning: list[str] = []
@@ -49,33 +80,10 @@ class ClassifierAgent(Agent):
                         f"{doc.filename} p{doc.page_from}-{doc.page_to}: already labelled '{doc.label}'."
                     )
                     continue
-                pages = list(range(1, (doc.pages or 1) + 1))
-                texts = await asyncio.to_thread(page_texts, ctx.storage, doc)
-                pngs = await asyncio.to_thread(page_pngs, ctx.storage, doc, pages[:n_images])
-                content = [
-                    text_part(
-                        f"File: {doc.filename} ({doc.pages} page(s)). "
-                        + (
-                            f"Text layer:\n{text_block(texts, pages, max_chars)}"
-                            if doc.has_text_layer
-                            else "No text layer (scanned): read the page images."
-                        )
-                    ),
-                    *(image_part(p) for p in pngs),
-                ]
                 await ctx.emit(f"classifying {doc.filename}")
-                out, metrics = await self.call_llm(
-                    ctx,
-                    action,
-                    ClassifierOutput,
-                    content,
-                    prompt_vars={"labels": dt.labels},
-                    json_schema=schema,
-                    context={"document": doc.filename},
-                )
+                entries, metrics = await self.classify_document(ctx, doc, schema)
                 calls.append(metrics)
-                assert isinstance(out, ClassifierOutput)
-                entries = _clean(out.documents, doc.pages or 1) or [
+                entries = entries or [
                     ClassifiedDocument(
                         label=fallback, confidence=0.0, page_from=1, page_to=doc.pages or 1, reason=""
                     )
@@ -193,6 +201,13 @@ class ClassifierAgent(Agent):
             confidence,
             metrics,
         )
+
+
+def label_schema(ctx: AgentContext) -> dict[str, Any]:
+    """ClassifierOutput's strict schema with the label enum from document_types.yaml."""
+    schema = strict_json_schema(ClassifierOutput)
+    schema["$defs"]["ClassifiedDocument"]["properties"]["label"]["enum"] = [lbl.id for lbl in ctx.config.document_types.labels]
+    return schema
 
 
 def _clean(entries: list[ClassifiedDocument], pages: int) -> list[ClassifiedDocument]:

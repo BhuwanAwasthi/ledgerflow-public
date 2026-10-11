@@ -13,7 +13,9 @@ params:
   name_match_threshold: 90          # rapidfuzz token_set_ratio
   docs_required_new_vendor: [tax_form, bank_letter]
   docs_required_bank_change: [bank_letter]
-  verify_bank_letter_name: true     # legal name on bank letter must fuzzy-match vendor name (>= 85)
+  verify_bank_letter_name: true     # legal name on bank letter must fuzzy-match vendor name
+  admin_verified_docs: [tax_form, bank_letter]   # portal uploads of these wait for an admin's vendor approval
+  document_name_min_score: 85       # rapidfuzz partial_ratio of the vendor name in an uploaded document's text
   tax_id_formats:                   # regex per country for onboarding checks
     US: "^\\d{2}-\\d{7}$"
     GB: "^GB\\d{9}$"

@@ -4,15 +4,19 @@ from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi.responses import Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
+from app import pdf
 from app.api.deps import current_config, get_orchestrator, get_session, get_storage
 from app.api.schemas import CaseDetailOut, CaseListOut, CaseOut, ReviewIn
 from app.cases import UploadedFile, create_case
 from app.config_loader import ResolvedConfig
 from app.db import dumps
+from app.exports.audit_pack import build_audit_pack
+from app.exports.service import ExportError, case_file, get_profile
 from app.models import (
     Case,
     Document,
@@ -201,3 +205,61 @@ async def review(case_id: int, body: ReviewIn, s: SessionDep, orch: OrchDep) -> 
         raise HTTPException(409, str(e)) from e
     s.expire_all()
     return case_out(s, orch, _load_case(s, case_id))
+
+
+def _download(data: bytes, mime: str, filename: str, inline: bool = False) -> Response:
+    disp = "inline" if inline else "attachment"
+    return Response(data, media_type=mime, headers={"Content-Disposition": f'{disp}; filename="{filename}"'})
+
+
+@router.get("/{case_id}/template/{version}/download")
+async def download_template(case_id: int, version: int, s: SessionDep, orch: OrchDep) -> Response:
+    """One template version as the ERP profile's file (csv | xlsx)."""
+    case = _load_case(s, case_id)
+    cfg = orch.case_config(s, case)
+    tv = s.scalars(
+        select(TemplateVersion).where(TemplateVersion.case_id == case_id, TemplateVersion.version == version)
+    ).first()
+    if tv is None:
+        raise HTTPException(404, f"{case.ref} has no template v{version}")
+    try:
+        profile = get_profile(cfg, tv.erp_profile)
+        return _download(*case_file(s, case, profile, version))
+    except ExportError as e:
+        raise HTTPException(e.status, str(e)) from e
+
+
+@router.get("/{case_id}/audit-pack")
+async def audit_pack(case_id: int, s: SessionDep, orch: OrchDep) -> Response:
+    case = _load_case(s, case_id)
+    data = build_audit_pack(s, case, orch.case_config(s, case).app.app.name)
+    return _download(data, "application/pdf", f"AUDIT_{case.ref}.pdf")
+
+
+def _document(s: Session, case_id: int, doc_id: int) -> Document:
+    doc = s.get(Document, doc_id)
+    if doc is None or doc.case_id != case_id:
+        raise HTTPException(404, f"document {doc_id} not found on case {case_id}")
+    return doc
+
+
+@router.get("/{case_id}/documents/{doc_id}/file")
+async def document_file(
+    case_id: int, doc_id: int, s: SessionDep, storage: Annotated[Storage, Depends(get_storage)]
+) -> Response:
+    doc = _document(s, case_id, doc_id)
+    return _download(storage.get(doc.storage_key), doc.mime or "application/pdf", doc.filename, inline=True)
+
+
+@router.get("/{case_id}/documents/{doc_id}/pages/{page}.png")
+async def document_page(
+    case_id: int, doc_id: int, page: int, s: SessionDep, storage: Annotated[Storage, Depends(get_storage)]
+) -> Response:
+    doc = _document(s, case_id, doc_id)
+    if not 1 <= page <= (doc.pages or 0):
+        raise HTTPException(404, f"{doc.filename} has no page {page}")
+    try:
+        data = storage.get(pdf.page_png_key(doc.sha256, page))
+    except (FileNotFoundError, OSError) as e:
+        raise HTTPException(404, f"page {page} of {doc.filename} is not rendered") from e
+    return Response(data, media_type="image/png")

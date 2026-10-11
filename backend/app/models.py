@@ -117,8 +117,12 @@ class VendorRequest(Base):
     token: Mapped[str] = mapped_column(String(64), unique=True)
     docs_needed: Mapped[list[str]] = mapped_column(JSON, default=list)
     docs_received: Mapped[list[str]] = mapped_column(JSON, default=list)
-    status: Mapped[str] = mapped_column(String(16), default="open")
+    status: Mapped[str] = mapped_column(String(16), default="open")  # open|submitted|approved|rejected
     created_at: Mapped[datetime] = _ts()
+    case_id: Mapped[int | None] = mapped_column(ForeignKey("cases.id"))  # the case that asked
+    kind: Mapped[str] = mapped_column(String(16), default="onboarding")  # onboarding|info
+    checks: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)  # verification of uploads
+    message: Mapped[dict[str, Any] | None] = mapped_column(JSON)  # the comms draft shown on the portal
 
 
 class PurchaseOrder(Base):
@@ -189,6 +193,9 @@ class Case(Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
     sla_due_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     seed: Mapped[bool] = mapped_column(Boolean, default=False)  # seeded demo history (labelled in the UI)
+    approved_by: Mapped[str | None] = mapped_column(String(128))  # reviewer, or "auto" (set at finalize)
+    approved_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    exported_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
 
 class Document(Base):

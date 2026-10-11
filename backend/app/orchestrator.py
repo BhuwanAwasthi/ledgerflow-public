@@ -23,7 +23,9 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from app import po_ledger
 from app.agents.base import Agent, AgentContext, AgentResult, StubScript, build_registry
+from app.case_state import fold_state
 from app.config_loader import END_PREFIX, SKIPPED, ResolvedConfig, Stage, from_snapshot, snapshot_json
 from app.llm import LLM
 from app.models import (
@@ -38,6 +40,10 @@ from app.models import (
 from app.storage import Storage
 
 log = logging.getLogger(__name__)
+
+
+# terminal statuses that give a PO reservation back (approval consumes it in template.finalize)
+RELEASE_ON = frozenset({CaseStatus.rejected, CaseStatus.failed})
 
 
 class OrchestratorError(Exception):
@@ -444,7 +450,7 @@ class Orchestrator:
                 run_no=run_no,
                 config=cfg,
                 agent_config=agent_cfg,
-                state=self._case_state(s, case.id),
+                state=fold_state(s, case.id),
                 session_factory=self.session_factory,
                 llm=self.llm,
                 storage=self.storage,
@@ -466,22 +472,6 @@ class Orchestrator:
                 log.warning("case %s stage %s: agent raised", case.ref, stage.id, exc_info=True)
             notes.append(f"Attempt {attempt + 1} of {retries + 1} failed: {error}")
         return None, error, notes
-
-    def _case_state(self, s: Session, case_id: int) -> dict[str, Any]:
-        """Case state = outputs of completed/waiting stages, merged per agent id in order."""
-        state: dict[str, Any] = {}
-        rows = s.scalars(
-            select(StageEvent)
-            .where(
-                StageEvent.case_id == case_id,
-                StageEvent.status.in_([StageStatus.completed, StageStatus.waiting]),
-                StageEvent.agent_id.is_not(None),
-            )
-            .order_by(StageEvent.seq)
-        ).all()
-        for ev in rows:
-            state.setdefault(ev.agent_id, {}).update(ev.output or {})
-        return state
 
     # ---------------- persistence helpers
     def _event(
@@ -542,6 +532,8 @@ class Orchestrator:
     ) -> None:
         case.status = status
         case.current_stage = stage_id
+        if status in RELEASE_ON:  # a rejected or failed case gives its PO reservation back
+            po_ledger.release(s, case.id)
         sla = cfg.app.app.sla_hours.get(status.value)
         case.sla_due_at = utcnow() + timedelta(hours=sla) if sla else None
         s.commit()
@@ -573,6 +565,7 @@ class Orchestrator:
             )
             s.add(ev)
             case.status = CaseStatus.failed
+            po_ledger.release(s, case_id)
             s.commit()
             self.bus.publish(case_id, "stage_event", event_to_dict(ev))
             self.bus.publish(case_id, "case_updated", case_summary(case))

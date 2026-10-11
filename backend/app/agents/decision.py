@@ -20,6 +20,7 @@ from app import po_ledger
 from app.agents.base import Agent, AgentContext, AgentResult
 from app.agents.po_matching import llm_context
 from app.agents.policy import build_rule_context
+from app.case_state import effective
 from app.llm import LLMError, sum_metrics, text_part
 from app.llm_schemas import DecisionExplanation
 from app.models import Case, RuleResult
@@ -30,11 +31,12 @@ class DecisionAgent(Agent):
     async def run(self, action: str, ctx: AgentContext) -> AgentResult:
         p = ctx.params
         rules_cfg = ctx.config.rules
-        results: list[dict[str, Any]] = list(ctx.state.get("policy", {}).get("results") or [])
-        inv: dict[str, Any] = ctx.state.get("normaliser", {}).get("invoice") or {}
-        meta: dict[str, Any] = ctx.state.get("extraction", {}).get("field_meta") or {}
-        pm: dict[str, Any] = ctx.state.get("po_matching", {})
-        vendor = ctx.state.get("vendor", {}).get("vendor") or {}
+        state = effective(ctx.state)
+        results: list[dict[str, Any]] = list(state.get("policy", {}).get("results") or [])
+        inv: dict[str, Any] = state.get("normaliser", {}).get("invoice") or {}
+        meta: dict[str, Any] = state.get("extraction", {}).get("field_meta") or {}
+        pm: dict[str, Any] = state.get("po_matching", {})
+        vendor = state.get("vendor", {}).get("vendor") or {}
         required = next((r.params.get("fields", []) for r in rules_cfg.rules if r.id == "required_fields"), [])
 
         gates = GateInput(

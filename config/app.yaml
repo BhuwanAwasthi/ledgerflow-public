@@ -32,3 +32,7 @@ limits:
   pipeline_concurrency: 2
   stage_timeout_s: 180
   max_stages_per_run: 100   # guard against a workflow loop that never pauses
+
+exports:
+  batch_ref_prefix: EXP-                                          # export batch refs: EXP-0001, EXP-0002...
+  zip_filename_template: "AP_EXPORT_{{ batch.ref }}_{{ profile.id }}.zip"   # mode=zip: one file per invoice inside

@@ -124,7 +124,7 @@ class POMatchingAgent(Agent):
                 )
                 return AgentResult("no_po", base, reasoning, confidence=1.0)
 
-            views = {po.po_number: self._po_view(s, po, ctx.case_id) for po in candidates}
+            views = {po.po_number: po_view(s, po, ctx.case_id) for po in candidates}
             await ctx.emit(f"comparing the invoice with {len(candidates)} PO(s)")
             out, call = await self.call_llm(
                 ctx,
@@ -191,7 +191,7 @@ class POMatchingAgent(Agent):
 
             j = judged.get(chosen.po_number)
             pairs = {pr.invoice_line_index: pr.po_line_no for pr in (j.pairs if j else [])}
-            lines = self._pair_lines(
+            lines = pair_lines(
                 s, ctx.case_id, chosen, inv, pairs, bool(p.get("use_grn", True)), float(p["pair_min_similarity"])
             )
             case.po_id = chosen.id
@@ -209,74 +209,6 @@ class POMatchingAgent(Agent):
                 off = [ln["description"] for ln in lines if ln["po_line_no"] is None]
                 reasoning.append("Not on the PO: " + "; ".join(off) + ".")
             return AgentResult(outcome, base, reasoning[:5], confidence=score, metrics=sum_metrics([call]))
-
-    def _po_view(self, s: Session, po: PurchaseOrder, case_id: int) -> dict[str, Any]:
-        lines = s.scalars(select(POLine).where(POLine.po_id == po.id).order_by(POLine.line_no)).all()
-        committed = po_ledger.committed(s, po.id, exclude_case_id=case_id)
-        return {
-            "po_number": po.po_number,
-            "id": po.id,
-            "currency": po.currency,
-            "amount": str(po.amount),
-            "committed_by_others": str(committed),
-            "remaining": str(po.amount - committed),
-            "status": po.status,
-            "created_at": po.created_at.date().isoformat() if po.created_at else None,
-            "notes": po.notes,
-            "lines": [
-                {"line_no": ln.line_no, "description": ln.description, "qty": str(ln.qty), "unit_price": str(ln.unit_price), "gl_code": ln.gl_code}
-                for ln in lines
-            ],
-        }
-
-    def _pair_lines(
-        self,
-        s: Session,
-        case_id: int,
-        po: PurchaseOrder,
-        inv: dict[str, Any],
-        pairs: dict[int, int | None],
-        use_grn: bool,
-        min_similarity: float,
-    ) -> list[dict[str, Any]]:
-        """Validate the model's pairs against the PO (line exists, used once, descriptions at least
-        `min_similarity` alike by rapidfuzz token_set_ratio) and add GRN quantities."""
-        po_lines = {ln.line_no: ln for ln in s.scalars(select(POLine).where(POLine.po_id == po.id)).all()}
-        grn: dict[int, Decimal] = {}
-        if use_grn:
-            for g in s.scalars(select(GRN).where(GRN.po_id == po.id)).all():
-                grn[g.line_no] = grn.get(g.line_no, Decimal(0)) + g.qty_received
-        before = po_ledger.committed_qty_by_line(s, po.id, exclude_case_id=case_id)
-        used: set[int] = set()
-        out: list[dict[str, Any]] = []
-        for i, ln in enumerate(inv.get("lines") or []):
-            no = pairs.get(i)
-            pl = po_lines.get(no) if no is not None else None
-            similar = pl is not None and fuzz.token_set_ratio(
-                ln.get("description") or "", pl.description, processor=default_process
-            ) >= min_similarity
-            if pl is None or pl.line_no in used or not similar:
-                pl = None
-            else:
-                used.add(pl.line_no)
-            out.append(
-                {
-                    "index": i,
-                    "description": ln.get("description"),
-                    "qty": ln.get("qty"),
-                    "unit_price": ln.get("unit_price"),
-                    "amount": ln.get("amount"),
-                    "po_line_no": pl.line_no if pl else None,
-                    "po_line_id": pl.id if pl else None,
-                    "po_description": pl.description if pl else None,
-                    "po_qty": str(pl.qty) if pl else None,
-                    "po_unit_price": str(pl.unit_price) if pl else None,
-                    "gl_code": pl.gl_code if pl else None,
-                    "grn_received": str(grn[pl.line_no]) if pl and pl.line_no in grn else None,
-                    "invoiced_before": str(before.get(pl.id, Decimal(0))) if pl else "0",
-                }
-            )
-        return out
 
     # ---------------- suggest_gl
     async def _suggest_gl(self, action: str, ctx: AgentContext) -> AgentResult:
@@ -358,6 +290,74 @@ class POMatchingAgent(Agent):
             if ev and ev.output.get("gl"):
                 out.append({"case_id": cid, "gl": ev.output["gl"].get("primary")})
         return out
+
+
+def po_view(s: Session, po: PurchaseOrder, case_id: int) -> dict[str, Any]:
+    lines = s.scalars(select(POLine).where(POLine.po_id == po.id).order_by(POLine.line_no)).all()
+    committed = po_ledger.committed(s, po.id, exclude_case_id=case_id)
+    return {
+        "po_number": po.po_number,
+        "id": po.id,
+        "currency": po.currency,
+        "amount": str(po.amount),
+        "committed_by_others": str(committed),
+        "remaining": str(po.amount - committed),
+        "status": po.status,
+        "created_at": po.created_at.date().isoformat() if po.created_at else None,
+        "notes": po.notes,
+        "lines": [
+            {"line_no": ln.line_no, "description": ln.description, "qty": str(ln.qty), "unit_price": str(ln.unit_price), "gl_code": ln.gl_code}
+            for ln in lines
+        ],
+    }
+
+def pair_lines(
+    s: Session,
+    case_id: int,
+    po: PurchaseOrder,
+    inv: dict[str, Any],
+    pairs: dict[int, int | None],
+    use_grn: bool,
+    min_similarity: float,
+) -> list[dict[str, Any]]:
+    """Validate the model's pairs against the PO (line exists, used once, descriptions at least
+    `min_similarity` alike by rapidfuzz token_set_ratio) and add GRN quantities."""
+    po_lines = {ln.line_no: ln for ln in s.scalars(select(POLine).where(POLine.po_id == po.id)).all()}
+    grn: dict[int, Decimal] = {}
+    if use_grn:
+        for g in s.scalars(select(GRN).where(GRN.po_id == po.id)).all():
+            grn[g.line_no] = grn.get(g.line_no, Decimal(0)) + g.qty_received
+    before = po_ledger.committed_qty_by_line(s, po.id, exclude_case_id=case_id)
+    used: set[int] = set()
+    out: list[dict[str, Any]] = []
+    for i, ln in enumerate(inv.get("lines") or []):
+        no = pairs.get(i)
+        pl = po_lines.get(no) if no is not None else None
+        similar = pl is not None and fuzz.token_set_ratio(
+            ln.get("description") or "", pl.description, processor=default_process
+        ) >= min_similarity
+        if pl is None or pl.line_no in used or not similar:
+            pl = None
+        else:
+            used.add(pl.line_no)
+        out.append(
+            {
+                "index": i,
+                "description": ln.get("description"),
+                "qty": ln.get("qty"),
+                "unit_price": ln.get("unit_price"),
+                "amount": ln.get("amount"),
+                "po_line_no": pl.line_no if pl else None,
+                "po_line_id": pl.id if pl else None,
+                "po_description": pl.description if pl else None,
+                "po_qty": str(pl.qty) if pl else None,
+                "po_unit_price": str(pl.unit_price) if pl else None,
+                "gl_code": pl.gl_code if pl else None,
+                "grn_received": str(grn[pl.line_no]) if pl and pl.line_no in grn else None,
+                "invoiced_before": str(before.get(pl.id, Decimal(0))) if pl else "0",
+            }
+        )
+    return out
 
 
 def _closeness(amount: Decimal | None, remaining: Decimal) -> float:

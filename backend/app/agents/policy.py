@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app import po_ledger
 from app.agents.base import Agent, AgentContext, AgentResult
 from app.agents.vendor import iban_hash
+from app.case_state import effective
 from app.models import Case, PurchaseOrder, RuleResult, Vendor
 from app.rules.engine import LineView, OtherCase, POView, RuleContext, VendorView, dec, evaluate
 
@@ -30,6 +31,7 @@ def today() -> date:
 
 
 def build_rule_context(s: Session, case: Case, state: dict[str, Any]) -> RuleContext:
+    state = effective(state)  # the reviewer's field edits and PO re-links (reconciler) on top
     inv: dict[str, Any] = state.get("normaliser", {}).get("invoice") or {}
     meta: dict[str, Any] = state.get("extraction", {}).get("field_meta") or {}
     pm: dict[str, Any] = state.get("po_matching", {})

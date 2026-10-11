@@ -113,6 +113,9 @@ class CaseOut(_ORM):
     updated_at: datetime
     sla_due_at: datetime | None
     seed: bool = False
+    approved_by: str | None = None
+    approved_at: datetime | None = None
+    exported_at: datetime | None = None
 
 
 class CaseDetailOut(CaseOut):
@@ -153,3 +156,151 @@ class FixtureOut(BaseModel):
     demo_remark: str | None
     available: bool
     supporting_files: list[FixtureFileOut]
+
+
+class ExportIn(BaseModel):
+    case_ids: list[int]
+    erp_profile: str | None = None  # default: app.yaml default_erp_profile
+    mode: Literal["zip", "batch"] = "batch"
+    force: bool = False  # export cases that were already exported
+    actor: str = "AP Reviewer"
+
+
+class ExportBatchOut(_ORM):
+    id: int
+    ref: str | None
+    erp_profile: str
+    case_ids: list[int]
+    created_by: str | None
+    created_at: datetime
+    filename: str | None = None
+    download_url: str | None = None
+
+
+class VendorRequestOut(_ORM):
+    id: int
+    vendor_id: int | None
+    case_id: int | None
+    kind: str
+    proposed_name: str | None
+    token: str
+    docs_needed: list[str]
+    docs_received: list[str]
+    checks: list[dict[str, Any]]
+    message: dict[str, Any] | None
+    status: str
+    created_at: datetime
+
+
+class VendorOut(_ORM):
+    id: int
+    code: str
+    legal_name: str
+    aliases: list[str]
+    tax_id: str | None
+    country: str | None
+    email_domain: str | None
+    bank_last4: str | None
+    category: str | None
+    status: str
+    default_gl: str | None
+    non_po_allowed: bool
+    created_at: datetime
+
+
+class VendorDetailOut(VendorOut):
+    requests: list[VendorRequestOut]
+    memory: list[str]
+    open_cases: list[CaseOut]
+
+
+class VendorActionIn(BaseModel):
+    actor: str = "Admin"
+    reason: str | None = None
+
+
+class VendorActionOut(BaseModel):
+    vendor_id: int
+    status: str
+    notes: list[str]
+    resumed_case_ids: list[int]
+
+
+class POLineOut(_ORM):
+    id: int
+    line_no: int
+    description: str
+    qty: Decimal
+    unit_price: Decimal
+    amount: Decimal
+    gl_code: str | None
+
+
+class POConsumptionOut(_ORM):
+    id: int
+    po_line_id: int | None
+    case_id: int
+    amount: Decimal
+    qty: Decimal | None
+    state: str
+
+
+class POOut(BaseModel):
+    id: int
+    po_number: str
+    vendor_id: int | None
+    vendor_name: str | None
+    currency: str
+    amount: Decimal
+    consumed: Decimal
+    reserved: Decimal
+    remaining: Decimal
+    status: str
+    created_at: datetime
+    approved_by: str | None
+    notes: str | None
+
+
+class PODetailOut(POOut):
+    lines: list[POLineOut]
+    consumption: list[POConsumptionOut]
+
+
+class NotificationOut(_ORM):
+    id: int
+    audience: str
+    case_id: int | None
+    text: str
+    read: bool
+    created_at: datetime
+
+
+class PortalNeedOut(BaseModel):
+    id: str
+    label: str
+    received: bool
+
+
+class PortalUploadedOut(BaseModel):
+    document_id: int
+    filename: str
+    label: str
+    confidence: float | None
+    checks: list[dict[str, Any]]
+
+
+class PortalOut(BaseModel):
+    token: str
+    kind: str
+    status: str
+    vendor_name: str | None
+    case_ref: str | None
+    invoice_number: str | None
+    docs_needed: list[PortalNeedOut]
+    docs_received: list[str]
+    checks: list[dict[str, Any]]
+    message: dict[str, Any] | None
+    open: bool
+    uploaded: list[PortalUploadedOut] = []
+    missing: list[str] = []
+    resumed: bool = False

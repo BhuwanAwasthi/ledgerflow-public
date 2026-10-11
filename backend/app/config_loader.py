@@ -66,11 +66,17 @@ class Limits(_Open):
     max_stages_per_run: int = Field(ge=1)
 
 
+class ExportSettings(_Open):
+    batch_ref_prefix: str = "EXP-"
+    zip_filename_template: str = "AP_EXPORT_{{ batch.ref }}.zip"
+
+
 class AppConfig(_Open):
     app: AppInfo
     features: dict[str, bool] = Field(default_factory=dict)
     llm: LLMSettings
     limits: Limits
+    exports: ExportSettings = Field(default_factory=ExportSettings)
 
 
 # ---------- agents/<id>.yaml ----------

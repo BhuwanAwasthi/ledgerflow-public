@@ -151,14 +151,19 @@ class ExtractionAgent(Agent):
         )
 
     def _invoice_document(self, s: Session, ctx: AgentContext) -> Document | None:
+        """The classifier's invoice, unless a corrected invoice arrived later (vendor portal upload)."""
+        routes = {lbl.id: lbl.route for lbl in ctx.config.document_types.labels}
+        docs = s.scalars(select(Document).where(Document.case_id == ctx.case_id).order_by(Document.id)).all()
+        invoices = [d for d in docs if routes.get(d.label or "") == INVOICE_ROUTE]
         doc_id = ctx.state.get("classifier", {}).get("invoice_document_id")
+        later = [d for d in invoices if doc_id and d.id > doc_id]
+        if later:
+            return later[-1]
         if doc_id:
             doc = s.get(Document, doc_id)
             if doc is not None:
                 return doc
-        routes = {lbl.id: lbl.route for lbl in ctx.config.document_types.labels}
-        docs = s.scalars(select(Document).where(Document.case_id == ctx.case_id).order_by(Document.id)).all()
-        return next((d for d in docs if routes.get(d.label or "") == INVOICE_ROUTE), None)
+        return invoices[0] if invoices else None
 
     def _vendor_hints(
         self, s: Session, ctx: AgentContext, case: Case, texts: list[str]

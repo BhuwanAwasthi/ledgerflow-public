@@ -175,7 +175,11 @@ class VendorAgent(Agent):
                 created = True
                 case.vendor_id = vendor.id
             req = s.scalars(
-                select(VendorRequest).where(VendorRequest.vendor_id == vendor.id, VendorRequest.status == "open")
+                select(VendorRequest).where(
+                    VendorRequest.vendor_id == vendor.id,
+                    VendorRequest.kind == "onboarding",
+                    VendorRequest.status.in_(["open", "submitted"]),
+                )
             ).first()
             reused = req is not None
             if req is None:
@@ -186,6 +190,8 @@ class VendorAgent(Agent):
                     docs_needed=docs,
                     docs_received=[],
                     status="open",
+                    case_id=case.id,
+                    kind="onboarding",
                 )
                 s.add(req)
             s.commit()

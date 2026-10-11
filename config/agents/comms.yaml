@@ -20,5 +20,26 @@ params:
   include_portal_link: true
   portal_base_url_env: PUBLIC_APP_URL
   signature: "Accounts Payable, Demo Co."
+  # What a hold request asks for, per failed rule id (keys of need_text). Onboarding requests use the
+  # vendor request's docs_needed instead. No failed rule listed here -> default_needs.
+  request_needs:
+    bank_details_match: [bank_letter]
+    vendor_approved: [tax_form, bank_letter]
+    required_fields: [invoice]
+    arithmetic: [invoice]
+  default_needs: [invoice]
+  need_text:
+    tax_form: "a completed and signed W-9 (or tax registration certificate)"
+    bank_letter: "a signed letter on bank letterhead confirming the account holder name and account details"
+    invoice: "a corrected copy of the invoice"
+  missing_fields_suffix: " showing the {{ fields | join(', ') }}"   # appended to the invoice need when fields are missing
+  # In-app notifications (Jinja2, sandboxed): vars ref, invoice_number, vendor, summary
+  notifications:
+    request_reviewer: "{{ ref }}: request drafted for {{ vendor }} ({{ summary }}). Copy it or open it in your mail app."
+    request_submitter: "Invoice {{ invoice_number or ref }} is on hold: we need {{ summary }}. Use the upload link in our message."
+    rejection_reviewer: "{{ ref }}: rejection message drafted for {{ vendor }}."
+    rejection_submitter: "Invoice {{ invoice_number or ref }} was not accepted: {{ summary }}"
+    approved_submitter: "Invoice {{ invoice_number or ref }} was approved."
+    approved_reviewer: "{{ ref }} approved and ready to export."
 retries: 1
 timeout_s: 60
