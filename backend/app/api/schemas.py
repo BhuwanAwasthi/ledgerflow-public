@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -105,6 +105,8 @@ class CaseOut(_ORM):
     po_id: int | None
     currency: str | None
     total: Decimal | None
+    invoice_number: str | None = None
+    invoice_date: date | None = None
     confidence: float | None
     config_hash: str | None
     created_at: datetime

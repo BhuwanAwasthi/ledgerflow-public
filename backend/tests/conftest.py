@@ -15,12 +15,14 @@ from app.db import init_db, make_engine, make_session_factory
 from app.llm import FakeLLM
 from app.models import Case
 from app.orchestrator import Orchestrator
+from app.seed import load_master
 from app.settings import BACKEND_DIR, REPO_ROOT, Settings
 from app.storage import LocalStorage
 
 CONFIG_DIR = REPO_ROOT / "config"
 FIXTURE_DIR = REPO_ROOT / "data" / "fixtures"
 LLM_FIXTURES = BACKEND_DIR / "tests" / "llm_fixtures"
+MASTER_DIR = REPO_ROOT / "data" / "master"
 
 
 @pytest.fixture
@@ -93,8 +95,7 @@ async def harness(session_factory: sessionmaker[Session], tmp_path: Path) -> Asy
 
 
 class Pipeline:
-    """Real agents where a handler exists (intake, classifier, extraction, normaliser), StubAgent for the
-    rest, FakeLLM for every model call."""
+    """Real agents where a handler exists, StubAgent for the rest, FakeLLM for every model call."""
 
     def __init__(self, sf: sessionmaker[Session], storage: LocalStorage, llm: Any):
         self.sf = sf
@@ -102,8 +103,13 @@ class Pipeline:
         self.llm = llm
         self.orch: Orchestrator | None = None
 
-    async def start(self, files: dict[str, str] | None = None) -> Orchestrator:
+    async def start(self, files: dict[str, str] | None = None, *, master: bool = True) -> Orchestrator:
+        """`master`: load data/master/*.csv (vendors, POs, GRNs, GL accounts) first."""
         self.cfg = build_config(files or read_config_files(CONFIG_DIR))
+        if master:
+            with self.sf() as s:
+                load_master(s, MASTER_DIR)
+                s.commit()
         cfg = self.cfg
         self.orch = Orchestrator(self.sf, lambda: cfg, llm=self.llm, storage=self.storage)
         await self.orch.start()

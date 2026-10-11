@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -10,6 +10,7 @@ from typing import Any
 from sqlalchemy import (
     JSON,
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -178,6 +179,9 @@ class Case(Base):
     po_id: Mapped[int | None] = mapped_column(ForeignKey("purchase_orders.id"))
     currency: Mapped[str | None] = mapped_column(String(3))
     total: Mapped[Decimal | None] = mapped_column(Money)
+    invoice_number: Mapped[str | None] = mapped_column(String(64))  # as printed (set by the normaliser)
+    invoice_number_norm: Mapped[str | None] = mapped_column(String(64), index=True)  # duplicate checks
+    invoice_date: Mapped[date | None] = mapped_column(Date)
     confidence: Mapped[float | None] = mapped_column(Float)
     config_hash: Mapped[str | None] = mapped_column(String(64))
     config_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSON)

@@ -170,9 +170,7 @@ async def test_s10_bundle_splits_into_child_cases(pipeline: Pipeline):
 async def test_vendor_memory_hints_are_injected(pipeline: Pipeline):
     await pipeline.start()
     with pipeline.sf() as s:
-        v = Vendor(code="V001", legal_name="Acme Office Supplies Inc", email_domain="acme-office.example")
-        s.add(v)
-        s.flush()
+        v = s.scalars(select(Vendor).where(Vendor.code == "V001")).one()
         s.add(VendorMemory(vendor_id=v.id, hint="Toner is billed per cartridge, not per box."))
         s.commit()
     cid = await pipeline.run_fixture("S01_acme_INV-A-2207.pdf", email="billing@acme-office.example")

@@ -20,5 +20,7 @@ params:
   implied_min_gap: 0.15
   date_window_days: 120
   use_grn: true
+  pair_min_similarity: 50           # rapidfuzz token_set_ratio floor before a model-proposed line pair is accepted
+  gl_history_cases: 5               # recent approved codings of the vendor shown to the GL suggestion
 retries: 1
 timeout_s: 90

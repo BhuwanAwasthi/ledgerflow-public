@@ -12,6 +12,10 @@ model:
   reasoning_effort: low
   max_output_tokens: 2000
 params:
+  # highest failed rule severity (rules.yaml decision_precedence) -> outcome; nothing failed + all gates pass -> pass_outcome
+  severity_outcomes: { reject: reject, hold: on_hold, review: needs_review }
+  pass_outcome: auto_approve
+  gate_failure_outcome: needs_review
   reserve_po_balance_on: [auto_approve, needs_review]
   explanation_max_sentences: 4
 retries: 1

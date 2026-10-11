@@ -6,7 +6,10 @@ import time
 from fastapi.testclient import TestClient
 
 from app.agents.base import StubScript
+from app.db import make_engine, make_session_factory
 from app.main import create_app
+from app.seed import load_master
+from tests.conftest import MASTER_DIR
 
 
 def wait_status(client: TestClient, case_id: int, statuses: set[str], timeout: float = 15) -> dict:
@@ -93,6 +96,11 @@ def test_fake_llm_backend_runs_real_perception_agents(test_settings):
     settings = test_settings.model_copy(update={"force_stub_agents": False, "llm_backend": "fake"})
     with TestClient(create_app(settings)) as client:
         assert client.get("/healthz").json()["llm_path"] == "fake"
+        engine = make_engine(settings.database_url)
+        with make_session_factory(engine)() as s:
+            load_master(s, MASTER_DIR)
+            s.commit()
+        engine.dispose()
         case = client.post("/api/fixtures/S01_happy/run").json()
         body = wait_status(client, case["id"], {"approved", "failed"})
         assert body["status"] == "approved"

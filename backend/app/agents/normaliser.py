@@ -194,6 +194,9 @@ class NormaliserAgent(Agent):
             assert case is not None
             case.currency = inv["currency"]
             case.total = money(total) if total is not None else None
+            case.invoice_number = number
+            case.invoice_number_norm = inv["invoice_number_normalised"]
+            case.invoice_date = date.fromisoformat(inv["invoice_date"]) if inv.get("invoice_date") else None
             s.commit()
 
         number_out = inv["invoice_number_normalised"] or "(no number)"
