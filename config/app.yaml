@@ -36,3 +36,49 @@ limits:
 exports:
   batch_ref_prefix: EXP-                                          # export batch refs: EXP-0001, EXP-0002...
   zip_filename_template: "AP_EXPORT_{{ batch.ref }}_{{ profile.id }}.zip"   # mode=zip: one file per invoice inside
+
+ui:
+  # Submitter journey tracker (courier style). A step is done once any of its stages completed
+  # (or the case reached one of its `statuses`); the step holding the current stage is "current".
+  journey:
+    - { label: Received,  stages: [intake] }
+    - { label: Classified, stages: [classify] }
+    - { label: Extracted, stages: [extract, normalise] }
+    - { label: Matched,   stages: [vendor_check, onboarding, await_vendor, po_match, gl_coding] }
+    - { label: Checked,   stages: [policy] }
+    - { label: Decided,   stages: [decide] }
+    - { label: In review, stages: [template_draft, review, reconcile, hold] }
+    - { label: Approved,  stages: [template_final, finalize, notify_approved], statuses: [approved, exported] }
+    - { label: Exported,  statuses: [exported] }
+  # Key outputs shown as chips on live-run stage cards. `{path|format}` reads the stage output;
+  # formats: money, pct (0..1 -> %), count, text. A chip whose values are missing is not shown.
+  stage_chips:
+    intake: ["{documents|count} document(s)", "{scanned_documents} scanned"]
+    classifier: ["{invoice_label}", "{documents.0.confidence|pct} confident"]
+    extraction: ["{invoice.invoice_number}", "{invoice.total|money} {invoice.currency}", "{invoice.lines|count} line(s)"]
+    normaliser: ["{invoice.invoice_number}", "{changes|count} change(s)", "{warnings|count} warning(s)"]
+    vendor: ["{vendor.code} · {vendor.legal_name}", "match: {match.method}", "bank ···{bank.invoice_last4}"]
+    po_matching: ["{po.po_number} · remaining {po.remaining|money}", "{match_type} match", "score {score|pct}", "GL {gl.primary} · {gl.primary_name}"]
+    policy: ["{results|count} rules", "{failed|count} failed", "{warned|count} warned"]
+    decision: ["{decision}", "reserved {reservation.amount|money} on {reservation.po_number}"]
+    template: ["v{template.version} · {template.erp_profile}", "{template.rows} row(s)", "{template.status}"]
+    reconciler: ["{changes|count} change(s) applied"]
+    comms: ["{draft.kind}", "{draft.needs|count} item(s) requested", "notified {notified|count}"]
+  dashboard:
+    ranges: [7d, 30d, 90d]
+    default_range: 30d
+    recent_cases: 10
+    exception_decisions: [needs_review, on_hold, reject]   # "exceptions caught" = invoice totals stopped by rules
+    decision_stage: decide
+  status_text:
+    received: Received, waiting to start
+    processing: "In progress: {label}"
+    needs_review: With the AP team for review
+    on_hold: "Waiting for {needs}"
+    approved: Approved, ready for payment run
+    exported: Approved and exported to the ERP
+    rejected: Rejected, see the message from the AP team
+    failed: "Processing stopped at {label}; the AP team has been told"
+    unsupported: No invoice found in the upload
+    split: Split into separate invoices
+  cold_start_after_ms: 2500

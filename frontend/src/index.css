@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 98%;
+    --surface: 0 0% 100%;
+    --foreground: 224 30% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 30% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 30% 12%;
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 220 16% 95%;
+    --muted-foreground: 220 9% 40%;
+    --accent: 226 100% 97%;
+    --accent-foreground: 243 60% 40%;
+    --destructive: 350 75% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 14% 90%;
+    --input: 220 14% 86%;
+    --ring: 243 75% 59%;
+    --radius: 0.625rem;
+    color-scheme: light;
+  }
+  .dark {
+    --background: 225 25% 7%;
+    --surface: 225 22% 10%;
+    --foreground: 220 20% 94%;
+    --card: 225 22% 10%;
+    --card-foreground: 220 20% 94%;
+    --popover: 225 22% 11%;
+    --popover-foreground: 220 20% 94%;
+    --primary: 239 84% 70%;
+    --primary-foreground: 230 40% 10%;
+    --muted: 225 18% 15%;
+    --muted-foreground: 220 10% 64%;
+    --accent: 240 30% 18%;
+    --accent-foreground: 230 90% 85%;
+    --destructive: 350 80% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 225 15% 19%;
+    --input: 225 15% 24%;
+    --ring: 239 84% 70%;
+    color-scheme: dark;
+  }
+  * {
+    @apply border-border;
+  }
+  html {
+    font-feature-settings: "cv11", "ss01";
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-size: 14px;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-muted;
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.06), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+}

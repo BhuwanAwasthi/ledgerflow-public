@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     # azure (needs AZURE_OPENAI_*) | fake (recorded outputs from backend/tests/llm_fixtures, for UI work offline)
     llm_backend: str = "azure"
     llm_fixtures_dir: Path = BACKEND_DIR / "tests" / "llm_fixtures"
+    # dev only: seconds FakeLLM waits per call, so a fake run is slow enough to watch in the live view
+    fake_llm_delay_s: float = 0.0
 
     cors_origins: str = "http://localhost:5173"
     public_app_url: str = "http://localhost:5173"

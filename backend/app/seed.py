@@ -194,6 +194,9 @@ def seed_history(s: Session, cfg: ResolvedConfig, sc: Scenarios, *, now: datetim
             ))
             t = end
         case.updated_at = t + (timedelta(hours=rng.uniform(0.5, 30)) if decision != "auto_approve" else timedelta())
+        if case.status == CaseStatus.approved:
+            case.approved_at = case.updated_at
+            case.approved_by = "auto" if decision == "auto_approve" else "AP Reviewer"
     s.flush()
     return spec.cases
 

@@ -102,6 +102,7 @@ class CaseOut(_ORM):
     decision: str | None
     decision_summary: str | None
     vendor_id: int | None
+    vendor_name: str | None = None
     po_id: int | None
     currency: str | None
     total: Decimal | None
@@ -304,3 +305,66 @@ class PortalOut(BaseModel):
     uploaded: list[PortalUploadedOut] = []
     missing: list[str] = []
     resumed: bool = False
+
+
+class RerunIn(BaseModel):
+    from_stage: str | None = None  # default: the stage the case failed or paused at
+
+
+class JourneyStepOut(BaseModel):
+    label: str
+    state: Literal["done", "current", "waiting", "failed", "skipped", "pending"]
+    at: datetime | None
+
+
+class JourneyOut(BaseModel):
+    case_id: int
+    ref: str | None
+    status: str
+    status_label: str | None
+    headline: str
+    needs: list[str]
+    portal_url: str | None
+    steps: list[JourneyStepOut]
+
+
+class DashboardKpisOut(BaseModel):
+    cases: int
+    decided: int
+    straight_through_pct: float | None
+    in_review: int
+    on_hold: int
+    processing: int
+    median_time_to_decision_s: float | None
+    exceptions_caught_amount: Decimal
+    exceptions_caught_cases: int
+    llm_cost_per_invoice_usd: float | None
+    llm_cost_total_usd: float
+    llm_tokens: int
+
+
+class DecisionCountOut(BaseModel):
+    decision: str
+    cases: int
+
+
+class RuleExceptionOut(BaseModel):
+    rule_id: str
+    name: str
+    severity: str | None
+    cases: int
+    amount: Decimal
+
+
+class DashboardOut(BaseModel):
+    range: str
+    ranges: list[str]
+    since: datetime
+    currency: str
+    kpis: DashboardKpisOut
+    series: list[dict[str, Any]]  # {date, cases, <decision>: count, ...}
+    decision_keys: list[str]
+    decision_mix: list[DecisionCountOut]
+    exceptions_by_rule: list[RuleExceptionOut]
+    seeded_cases: int
+    recent: list[CaseOut]

@@ -7,6 +7,8 @@ ConfigError listing every problem in plain English. An invalid config is never h
 from __future__ import annotations
 
 import hashlib
+import re
+import string
 from collections import deque
 from pathlib import Path
 from typing import Any, Literal
@@ -18,7 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import TERMINAL_STATUSES, ConfigVersion, ReviewAction
+from app.models import TERMINAL_STATUSES, CaseStatus, ConfigVersion, ReviewAction
 
 SKIPPED = "skipped"
 END_PREFIX = "end:"
@@ -71,12 +73,47 @@ class ExportSettings(_Open):
     zip_filename_template: str = "AP_EXPORT_{{ batch.ref }}.zip"
 
 
+class JourneyStep(_Strict):
+    label: str
+    stages: list[str] = Field(default_factory=list)  # workflow stage ids that belong to this step
+    statuses: list[str] = Field(default_factory=list)  # case statuses that complete this step (e.g. exported)
+
+
+class DashboardSettings(_Strict):
+    ranges: list[str] = Field(default_factory=lambda: ["7d", "30d", "90d"], min_length=1)
+    default_range: str = "30d"
+    recent_cases: int = Field(default=10, ge=1, le=50)
+    exception_decisions: list[str] = Field(default_factory=lambda: ["needs_review", "on_hold", "reject"])
+    decision_stage: str = "decide"  # time to decision = case created -> this stage's first completion
+
+    @model_validator(mode="after")
+    def _ranges(self) -> DashboardSettings:
+        for r in self.ranges:
+            if not re.fullmatch(r"[1-9]\d*d", r):
+                raise ValueError(f"dashboard range '{r}' must look like 7d")
+        if self.default_range not in self.ranges:
+            raise ValueError(f"default_range '{self.default_range}' is not one of {self.ranges}")
+        return self
+
+
+class UISettings(_Strict):
+    journey: list[JourneyStep] = Field(default_factory=list)
+    # agent id -> chip templates shown on live-run cards; `{path|format}` placeholders read the stage output
+    stage_chips: dict[str, list[str]] = Field(default_factory=dict)
+    dashboard: DashboardSettings = Field(default_factory=DashboardSettings)
+    # plain-English journey headline per case status; `{label}` = current stage status_label, `{needs}` = what
+    # a hold waits for (comms draft), joined with "and"
+    status_text: dict[str, str] = Field(default_factory=dict)
+    cold_start_after_ms: int = Field(default=2500, ge=0)  # show "Waking the engine" when /healthz is slower
+
+
 class AppConfig(_Open):
     app: AppInfo
     features: dict[str, bool] = Field(default_factory=dict)
     llm: LLMSettings
     limits: Limits
     exports: ExportSettings = Field(default_factory=ExportSettings)
+    ui: UISettings = Field(default_factory=UISettings)
 
 
 # ---------- agents/<id>.yaml ----------
@@ -160,6 +197,7 @@ class Rule(_Strict):
     enabled: bool = True
     applies_to: Literal["po", "non_po", "all"]
     severity: Severity
+    fail_label: str | None = None  # short name for the exception when the rule fails (dashboard); default: name
     params: dict[str, Any] = Field(default_factory=dict)
     explain: str
 
@@ -393,6 +431,8 @@ def build_config(files: dict[str, str]) -> ResolvedConfig:
 
     if workflow:
         errors.extend(validate_workflow(workflow, agents))
+        if app:
+            errors.extend(validate_ui(app.ui, workflow, agents))
 
     if errors or not (app and workflow and rules and doc_types):
         raise ConfigError(errors or ["config could not be loaded"])
@@ -408,6 +448,54 @@ def build_config(files: dict[str, str]) -> ResolvedConfig:
         files=dict(files),
         hash=config_hash(files),
     )
+
+
+STATUS_TEXT_FIELDS = frozenset({"label", "needs"})
+
+
+def validate_ui(ui: UISettings, wf: Workflow, agents: dict[str, AgentConfig]) -> list[str]:
+    """app.yaml `ui`: journey steps name real stages and statuses; chips name real agents."""
+    errors: list[str] = []
+    stage_ids = {s.id for s in wf.stages}
+    statuses = {c.value for c in CaseStatus}
+    for step in ui.journey:
+        for sid in step.stages:
+            if sid not in stage_ids:
+                errors.append(f"app.yaml: ui.journey '{step.label}' names unknown stage '{sid}'")
+        for st in step.statuses:
+            if st not in statuses:
+                errors.append(f"app.yaml: ui.journey '{step.label}' names unknown case status '{st}'")
+    if ui.dashboard.decision_stage not in stage_ids:
+        errors.append(f"app.yaml: ui.dashboard.decision_stage '{ui.dashboard.decision_stage}' is not a stage id")
+    else:
+        stage = wf.stage(ui.dashboard.decision_stage)
+        agent = agents.get(stage.agent or "")
+        action = agent.actions.get(stage.action or "") if agent else None
+        outcomes = set(action.outcomes) if action else set()
+        for d in ui.dashboard.exception_decisions:
+            if d not in outcomes:
+                errors.append(
+                    f"app.yaml: ui.dashboard.exception_decisions '{d}' is not an outcome of stage "
+                    f"'{stage.id}' ({', '.join(sorted(outcomes))})"
+                )
+    for st, text in ui.status_text.items():
+        if st not in statuses:
+            errors.append(f"app.yaml: ui.status_text names unknown case status '{st}'")
+        try:
+            fields = [f for _, f, _, _ in string.Formatter().parse(text) if f is not None]
+        except ValueError as e:
+            errors.append(f"app.yaml: ui.status_text.{st}: {e}")
+            continue
+        for f in fields:
+            if f not in STATUS_TEXT_FIELDS:
+                errors.append(
+                    f"app.yaml: ui.status_text.{st} uses '{{{f}}}'; allowed: "
+                    + ", ".join("{" + x + "}" for x in sorted(STATUS_TEXT_FIELDS))
+                )
+    for agent_id in ui.stage_chips:
+        if agent_id not in agents:
+            errors.append(f"app.yaml: ui.stage_chips names unknown agent '{agent_id}'")
+    return errors
 
 
 def validate_workflow(wf: Workflow, agents: dict[str, AgentConfig]) -> list[str]:

@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.agents.base import StubScript
-from app.api import cases, exports, fixtures, portal, system, vendors
+from app.api import cases, dashboard, exports, fixtures, portal, system, vendors
 from app.config_loader import resolved_config
 from app.db import init_db, make_engine, make_session_factory
 from app.llm import AzureLLM, make_llm
@@ -77,6 +77,7 @@ def create_app(settings: Settings | None = None, *, script: StubScript | None = 
     app.include_router(fixtures.router)
     app.include_router(exports.router)
     app.include_router(vendors.router)
+    app.include_router(dashboard.router)
     app.include_router(portal.router)
     return app
 

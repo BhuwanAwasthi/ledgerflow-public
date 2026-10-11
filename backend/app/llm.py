@@ -372,7 +372,8 @@ class FakeLLM:
 
     path = "fake"
 
-    def __init__(self, fixtures_dir: Path) -> None:
+    def __init__(self, fixtures_dir: Path, delay_s: float = 0.0) -> None:
+        self.delay_s = delay_s
         self.fixtures: list[dict[str, Any]] = [
             json.loads(p.read_text(encoding="utf-8")) for p in sorted(fixtures_dir.glob("*.json"))
         ]
@@ -399,6 +400,8 @@ class FakeLLM:
         if call["schema"] != req.schema.__name__:
             raise LLMError(f"FakeLLM: fixture schema {call['schema']} != requested {req.schema.__name__}")
         parsed = _parse(req, copy.deepcopy(call["output"]))
+        if self.delay_s > 0:
+            await asyncio.sleep(self.delay_s)
         return parsed, {
             "tokens_in": 0,
             "tokens_out": 0,
@@ -433,7 +436,7 @@ def make_llm(
     """The app's LLM: FakeLLM when LLM_BACKEND=fake, Azure when configured, else None (LLM stages fail
     with a clear error)."""
     if settings.llm_backend == "fake":
-        return FakeLLM(settings.llm_fixtures_dir)
+        return FakeLLM(settings.llm_fixtures_dir, settings.fake_llm_delay_s)
     if not (
         settings.azure_openai_endpoint and settings.azure_openai_api_key and settings.azure_openai_deployment
     ):

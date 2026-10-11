@@ -11,12 +11,13 @@ from sse_starlette.sse import EventSourceResponse
 
 from app import pdf
 from app.api.deps import current_config, get_orchestrator, get_session, get_storage
-from app.api.schemas import CaseDetailOut, CaseListOut, CaseOut, ReviewIn
+from app.api.schemas import CaseDetailOut, CaseListOut, CaseOut, JourneyOut, RerunIn, ReviewIn
 from app.cases import UploadedFile, create_case
 from app.config_loader import ResolvedConfig
 from app.db import dumps
 from app.exports.audit_pack import build_audit_pack
 from app.exports.service import ExportError, case_file, get_profile
+from app.journey import build_journey
 from app.models import (
     Case,
     Document,
@@ -38,6 +39,9 @@ OrchDep = Annotated[Orchestrator, Depends(get_orchestrator)]
 
 def case_out(s: Session, orch: Orchestrator, case: Case) -> dict[str, Any]:
     out = CaseOut.model_validate(case).model_dump()
+    if case.vendor_id is not None:
+        vendor = s.get(Vendor, case.vendor_id)
+        out["vendor_name"] = vendor.legal_name if vendor else None
     stage_id = case.current_stage
     if stage_id and not stage_id.startswith("end:") and case.config_snapshot:
         try:
@@ -93,6 +97,7 @@ async def list_cases(
     status: str | None = None,
     q: str | None = None,
     vendor: int | None = None,
+    submitter_email: str | None = None,
     page: int = 1,
     page_size: int = 50,
 ) -> dict[str, Any]:
@@ -101,6 +106,8 @@ async def list_cases(
         stmt = stmt.where(Case.status.in_(status.split(",")))
     if vendor is not None:
         stmt = stmt.where(Case.vendor_id == vendor)
+    if submitter_email:
+        stmt = stmt.where(func.lower(Case.submitter_email) == submitter_email.strip().lower())
     if q:
         like = f"%{q}%"
         stmt = stmt.outerjoin(Vendor, Vendor.id == Case.vendor_id).where(
@@ -152,14 +159,18 @@ async def stream_events(
     case_id: int,
     request: Request,
     follow: bool = True,
+    after: int | None = None,
     last_event_id: Annotated[str | None, Header()] = None,
 ) -> EventSourceResponse:
-    """SSE: replays stored stage_events (after Last-Event-ID), then streams live `stage_event`,
-    `case_updated` and `progress` events. `follow=false` closes after the replay."""
+    """SSE: replays stored stage_events (after Last-Event-ID, or `after` = the last seq the client has, for a
+    manual reconnect), then streams live `stage_event`, `case_updated` and `progress` events.
+    `follow=false` closes after the replay."""
     orch: Orchestrator = request.app.state.orchestrator
     with request.app.state.session_factory() as s:
         _load_case(s, case_id)
-    after = int(last_event_id) if last_event_id and last_event_id.isdigit() else 0
+    if last_event_id and last_event_id.isdigit():
+        after = int(last_event_id)
+    after = max(after or 0, 0)
 
     async def gen() -> AsyncIterator[dict[str, str]]:
         last_seq = after
@@ -205,6 +216,26 @@ async def review(case_id: int, body: ReviewIn, s: SessionDep, orch: OrchDep) -> 
         raise HTTPException(409, str(e)) from e
     s.expire_all()
     return case_out(s, orch, _load_case(s, case_id))
+
+
+@router.post("/{case_id}/rerun", response_model=CaseOut)
+async def rerun(case_id: int, body: RerunIn, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
+    """Admin: start a new run of a failed or paused case at `from_stage` (the live view's Retry button)."""
+    _load_case(s, case_id)
+    try:
+        await orch.rerun(case_id, body.from_stage)
+    except OrchestratorError as e:
+        raise HTTPException(409, str(e)) from e
+    s.expire_all()
+    return case_out(s, orch, _load_case(s, case_id))
+
+
+@router.get("/{case_id}/journey", response_model=JourneyOut)
+async def journey(case_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
+    """Courier-style tracker for the submitter (steps from app.yaml `ui.journey`)."""
+    case = _load_case(s, case_id)
+    events = s.scalars(select(StageEvent).where(StageEvent.case_id == case_id).order_by(StageEvent.seq)).all()
+    return build_journey(orch.case_config(s, case), case, list(events))
 
 
 def _download(data: bytes, mime: str, filename: str, inline: bool = False) -> Response:

@@ -14,6 +14,7 @@ auto_approve_gates:
 rules:
   - id: required_fields
     name: Required fields present
+    fail_label: "Missing required fields"
     enabled: true
     applies_to: all
     severity: hold
@@ -22,6 +23,7 @@ rules:
 
   - id: low_confidence_fields
     name: Extraction confidence
+    fail_label: "Low extraction confidence"
     enabled: true
     applies_to: all
     severity: review
@@ -30,6 +32,7 @@ rules:
 
   - id: arithmetic
     name: Lines, tax and total add up
+    fail_label: "Totals don't add up"
     enabled: true
     applies_to: all
     severity: review
@@ -38,6 +41,7 @@ rules:
 
   - id: duplicate_exact
     name: Not a duplicate
+    fail_label: "Duplicate invoice"
     enabled: true
     applies_to: all
     severity: reject
@@ -46,6 +50,7 @@ rules:
 
   - id: duplicate_near
     name: Not a possible duplicate
+    fail_label: "Possible duplicate"
     enabled: true
     applies_to: all
     severity: review
@@ -54,6 +59,7 @@ rules:
 
   - id: vendor_approved
     name: Vendor is approved
+    fail_label: "Vendor not approved"
     enabled: true
     applies_to: all
     severity: hold
@@ -62,6 +68,7 @@ rules:
 
   - id: bank_details_match
     name: Bank details match vendor master
+    fail_label: "Bank details changed"
     enabled: true
     applies_to: all
     severity: hold
@@ -70,6 +77,7 @@ rules:
 
   - id: po_valid
     name: PO exists, is open and belongs to vendor
+    fail_label: "Invalid PO reference"
     enabled: true
     applies_to: po
     severity: review
@@ -78,6 +86,7 @@ rules:
 
   - id: implied_po_requires_review
     name: PO was inferred, not quoted
+    fail_label: "PO inferred, not quoted"
     enabled: true
     applies_to: po
     severity: review
@@ -86,6 +95,7 @@ rules:
 
   - id: price_tolerance
     name: Unit prices within tolerance
+    fail_label: "Unit price over PO"
     enabled: true
     applies_to: po
     severity: review
@@ -94,6 +104,7 @@ rules:
 
   - id: quantity_vs_grn
     name: Quantity not above goods received
+    fail_label: "Qty above goods received"
     enabled: true
     applies_to: po
     severity: review
@@ -102,6 +113,7 @@ rules:
 
   - id: po_balance
     name: Within remaining PO balance
+    fail_label: "Over PO balance"
     enabled: true
     applies_to: po
     severity: review
@@ -110,6 +122,7 @@ rules:
 
   - id: unmatched_lines
     name: All lines map to the PO
+    fail_label: "Lines not on the PO"
     enabled: true
     applies_to: po
     severity: review
@@ -118,6 +131,7 @@ rules:
 
   - id: non_po_requires_review
     name: Non-PO invoice needs budget-owner approval
+    fail_label: "Non-PO invoice"
     enabled: true
     applies_to: non_po
     severity: review
@@ -126,6 +140,7 @@ rules:
 
   - id: currency_match
     name: Currency matches PO
+    fail_label: "Currency mismatch"
     enabled: true
     applies_to: po
     severity: review
@@ -134,6 +149,7 @@ rules:
 
   - id: date_sanity
     name: Invoice date is plausible
+    fail_label: "Implausible invoice date"
     enabled: true
     applies_to: all
     severity: review
@@ -142,6 +158,7 @@ rules:
 
   - id: tax_rate_valid
     name: Tax rate is an allowed rate
+    fail_label: "Invalid tax rate"
     enabled: true
     applies_to: all
     severity: review

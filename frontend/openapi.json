@@ -1,0 +1,4384 @@
+{
+  "components": {
+    "schemas": {
+      "Body_create_api_cases_post": {
+        "properties": {
+          "files": {
+            "description": "Invoices and supporting documents",
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "submitter_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitter Email"
+          },
+          "submitter_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitter Name"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_create_api_cases_post",
+        "type": "object"
+      },
+      "Body_upload_portal__token__upload_post": {
+        "properties": {
+          "files": {
+            "description": "Requested documents (W-9, bank letter, corrected invoice)",
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_portal__token__upload_post",
+        "type": "object"
+      },
+      "CaseDetailOut": {
+        "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Hash"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "current_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Stage"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
+          "decision_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Summary"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentOut"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/StageEventOut"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "exported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exported At"
+          },
+          "extraction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExtractionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "invoice_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Date"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "parent_case_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Case Id"
+          },
+          "po_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Po Id"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "review_actions": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewActionOut"
+            },
+            "title": "Review Actions",
+            "type": "array"
+          },
+          "rule_results": {
+            "items": {
+              "$ref": "#/components/schemas/RuleResultOut"
+            },
+            "title": "Rule Results",
+            "type": "array"
+          },
+          "seed": {
+            "default": false,
+            "title": "Seed",
+            "type": "boolean"
+          },
+          "sla_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sla Due At"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Label"
+          },
+          "submitter_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitter Email"
+          },
+          "submitter_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitter Name"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateVersionOut"
+            },
+            "title": "Templates",
+            "type": "array"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "vendor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Id"
+          },
+          "vendor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Name"
+          }
+        },
+        "required": [
+          "id",
+          "ref",
+          "parent_case_id",
+          "submitter_name",
+          "submitter_email",
+          "note",
+          "source",
+          "status",
+          "current_stage",
+          "decision",
+          "decision_summary",
+          "vendor_id",
+          "po_id",
+          "currency",
+          "total",
+          "confidence",
+          "config_hash",
+          "created_at",
+          "updated_at",
+          "sla_due_at",
+          "documents",
+          "extraction",
+          "rule_results",
+          "templates",
+          "review_actions",
+          "events"
+        ],
+        "title": "CaseDetailOut",
+        "type": "object"
+      },
+      "CaseListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CaseOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "CaseListOut",
+        "type": "object"
+      },
+      "CaseOut": {
+        "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Hash"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "current_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Stage"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
+          "decision_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Summary"
+          },
+          "exported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exported At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "invoice_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Date"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "parent_case_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Case Id"
+          },
+          "po_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Po Id"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "seed": {
+            "default": false,
+            "title": "Seed",
+            "type": "boolean"
+          },
+          "sla_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sla Due At"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Label"
+          },
+          "submitter_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitter Email"
+          },
+          "submitter_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitter Name"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "vendor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Id"
+          },
+          "vendor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Name"
+          }
+        },
+        "required": [
+          "id",
+          "ref",
+          "parent_case_id",
+          "submitter_name",
+          "submitter_email",
+          "note",
+          "source",
+          "status",
+          "current_stage",
+          "decision",
+          "decision_summary",
+          "vendor_id",
+          "po_id",
+          "currency",
+          "total",
+          "confidence",
+          "config_hash",
+          "created_at",
+          "updated_at",
+          "sla_due_at"
+        ],
+        "title": "CaseOut",
+        "type": "object"
+      },
+      "DashboardKpisOut": {
+        "properties": {
+          "cases": {
+            "title": "Cases",
+            "type": "integer"
+          },
+          "decided": {
+            "title": "Decided",
+            "type": "integer"
+          },
+          "exceptions_caught_amount": {
+            "title": "Exceptions Caught Amount",
+            "type": "string"
+          },
+          "exceptions_caught_cases": {
+            "title": "Exceptions Caught Cases",
+            "type": "integer"
+          },
+          "in_review": {
+            "title": "In Review",
+            "type": "integer"
+          },
+          "llm_cost_per_invoice_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Cost Per Invoice Usd"
+          },
+          "llm_cost_total_usd": {
+            "title": "Llm Cost Total Usd",
+            "type": "number"
+          },
+          "llm_tokens": {
+            "title": "Llm Tokens",
+            "type": "integer"
+          },
+          "median_time_to_decision_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Time To Decision S"
+          },
+          "on_hold": {
+            "title": "On Hold",
+            "type": "integer"
+          },
+          "processing": {
+            "title": "Processing",
+            "type": "integer"
+          },
+          "straight_through_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Straight Through Pct"
+          }
+        },
+        "required": [
+          "cases",
+          "decided",
+          "straight_through_pct",
+          "in_review",
+          "on_hold",
+          "processing",
+          "median_time_to_decision_s",
+          "exceptions_caught_amount",
+          "exceptions_caught_cases",
+          "llm_cost_per_invoice_usd",
+          "llm_cost_total_usd",
+          "llm_tokens"
+        ],
+        "title": "DashboardKpisOut",
+        "type": "object"
+      },
+      "DashboardOut": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "decision_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Decision Keys",
+            "type": "array"
+          },
+          "decision_mix": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionCountOut"
+            },
+            "title": "Decision Mix",
+            "type": "array"
+          },
+          "exceptions_by_rule": {
+            "items": {
+              "$ref": "#/components/schemas/RuleExceptionOut"
+            },
+            "title": "Exceptions By Rule",
+            "type": "array"
+          },
+          "kpis": {
+            "$ref": "#/components/schemas/DashboardKpisOut"
+          },
+          "range": {
+            "title": "Range",
+            "type": "string"
+          },
+          "ranges": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ranges",
+            "type": "array"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/CaseOut"
+            },
+            "title": "Recent",
+            "type": "array"
+          },
+          "seeded_cases": {
+            "title": "Seeded Cases",
+            "type": "integer"
+          },
+          "series": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "since": {
+            "format": "date-time",
+            "title": "Since",
+            "type": "string"
+          }
+        },
+        "required": [
+          "range",
+          "ranges",
+          "since",
+          "currency",
+          "kpis",
+          "series",
+          "decision_keys",
+          "decision_mix",
+          "exceptions_by_rule",
+          "seeded_cases",
+          "recent"
+        ],
+        "title": "DashboardOut",
+        "type": "object"
+      },
+      "DecisionCountOut": {
+        "properties": {
+          "cases": {
+            "title": "Cases",
+            "type": "integer"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision",
+          "cases"
+        ],
+        "title": "DecisionCountOut",
+        "type": "object"
+      },
+      "DocumentOut": {
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "has_text_layer": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Text Layer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "label_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Confidence"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime"
+          },
+          "page_from": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page From"
+          },
+          "page_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page To"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "mime",
+          "sha256",
+          "pages",
+          "label",
+          "label_confidence",
+          "page_from",
+          "page_to",
+          "has_text_layer"
+        ],
+        "title": "DocumentOut",
+        "type": "object"
+      },
+      "ExportBatchOut": {
+        "properties": {
+          "case_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Case Ids",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "download_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Url"
+          },
+          "erp_profile": {
+            "title": "Erp Profile",
+            "type": "string"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          }
+        },
+        "required": [
+          "id",
+          "ref",
+          "erp_profile",
+          "case_ids",
+          "created_by",
+          "created_at"
+        ],
+        "title": "ExportBatchOut",
+        "type": "object"
+      },
+      "ExportIn": {
+        "properties": {
+          "actor": {
+            "default": "AP Reviewer",
+            "title": "Actor",
+            "type": "string"
+          },
+          "case_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Case Ids",
+            "type": "array"
+          },
+          "erp_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erp Profile"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "mode": {
+            "default": "batch",
+            "enum": [
+              "zip",
+              "batch"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "case_ids"
+        ],
+        "title": "ExportIn",
+        "type": "object"
+      },
+      "ExtractionOut": {
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "field_meta": {
+            "additionalProperties": true,
+            "title": "Field Meta",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "data",
+          "field_meta"
+        ],
+        "title": "ExtractionOut",
+        "type": "object"
+      },
+      "FixtureFileOut": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "file": {
+            "title": "File",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "kind",
+          "available"
+        ],
+        "title": "FixtureFileOut",
+        "type": "object"
+      },
+      "FixtureOut": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "demo_remark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demo Remark"
+          },
+          "expect": {
+            "additionalProperties": true,
+            "title": "Expect",
+            "type": "object"
+          },
+          "file": {
+            "title": "File",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "render": {
+            "title": "Render",
+            "type": "string"
+          },
+          "run_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Order"
+          },
+          "supporting_files": {
+            "items": {
+              "$ref": "#/components/schemas/FixtureFileOut"
+            },
+            "title": "Supporting Files",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "file",
+          "render",
+          "run_order",
+          "expect",
+          "demo_remark",
+          "available",
+          "supporting_files"
+        ],
+        "title": "FixtureOut",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthOut": {
+        "properties": {
+          "config_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Hash"
+          },
+          "db": {
+            "title": "Db",
+            "type": "string"
+          },
+          "llm_path": {
+            "title": "Llm Path",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "storage": {
+            "title": "Storage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "db",
+          "storage",
+          "llm_path"
+        ],
+        "title": "HealthOut",
+        "type": "object"
+      },
+      "JourneyOut": {
+        "properties": {
+          "case_id": {
+            "title": "Case Id",
+            "type": "integer"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "needs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Needs",
+            "type": "array"
+          },
+          "portal_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portal Url"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Label"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/JourneyStepOut"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "case_id",
+          "ref",
+          "status",
+          "status_label",
+          "headline",
+          "needs",
+          "portal_url",
+          "steps"
+        ],
+        "title": "JourneyOut",
+        "type": "object"
+      },
+      "JourneyStepOut": {
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "done",
+              "current",
+              "waiting",
+              "failed",
+              "skipped",
+              "pending"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "state",
+          "at"
+        ],
+        "title": "JourneyStepOut",
+        "type": "object"
+      },
+      "NotificationOut": {
+        "properties": {
+          "audience": {
+            "title": "Audience",
+            "type": "string"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "read": {
+            "title": "Read",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "audience",
+          "case_id",
+          "text",
+          "read",
+          "created_at"
+        ],
+        "title": "NotificationOut",
+        "type": "object"
+      },
+      "POConsumptionOut": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "case_id": {
+            "title": "Case Id",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "po_line_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Po Line Id"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "po_line_id",
+          "case_id",
+          "amount",
+          "qty",
+          "state"
+        ],
+        "title": "POConsumptionOut",
+        "type": "object"
+      },
+      "PODetailOut": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "consumed": {
+            "title": "Consumed",
+            "type": "string"
+          },
+          "consumption": {
+            "items": {
+              "$ref": "#/components/schemas/POConsumptionOut"
+            },
+            "title": "Consumption",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/POLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "po_number": {
+            "title": "Po Number",
+            "type": "string"
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": "string"
+          },
+          "reserved": {
+            "title": "Reserved",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "vendor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Id"
+          },
+          "vendor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Name"
+          }
+        },
+        "required": [
+          "id",
+          "po_number",
+          "vendor_id",
+          "vendor_name",
+          "currency",
+          "amount",
+          "consumed",
+          "reserved",
+          "remaining",
+          "status",
+          "created_at",
+          "approved_by",
+          "notes",
+          "lines",
+          "consumption"
+        ],
+        "title": "PODetailOut",
+        "type": "object"
+      },
+      "POLineOut": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "gl_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gl Code"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "line_no": {
+            "title": "Line No",
+            "type": "integer"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "string"
+          },
+          "unit_price": {
+            "title": "Unit Price",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "line_no",
+          "description",
+          "qty",
+          "unit_price",
+          "amount",
+          "gl_code"
+        ],
+        "title": "POLineOut",
+        "type": "object"
+      },
+      "POOut": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "consumed": {
+            "title": "Consumed",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "po_number": {
+            "title": "Po Number",
+            "type": "string"
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": "string"
+          },
+          "reserved": {
+            "title": "Reserved",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "vendor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Id"
+          },
+          "vendor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Name"
+          }
+        },
+        "required": [
+          "id",
+          "po_number",
+          "vendor_id",
+          "vendor_name",
+          "currency",
+          "amount",
+          "consumed",
+          "reserved",
+          "remaining",
+          "status",
+          "created_at",
+          "approved_by",
+          "notes"
+        ],
+        "title": "POOut",
+        "type": "object"
+      },
+      "PortalNeedOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "received": {
+            "title": "Received",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "received"
+        ],
+        "title": "PortalNeedOut",
+        "type": "object"
+      },
+      "PortalOut": {
+        "properties": {
+          "case_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Ref"
+          },
+          "checks": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "docs_needed": {
+            "items": {
+              "$ref": "#/components/schemas/PortalNeedOut"
+            },
+            "title": "Docs Needed",
+            "type": "array"
+          },
+          "docs_received": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Docs Received",
+            "type": "array"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "missing": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "open": {
+            "title": "Open",
+            "type": "boolean"
+          },
+          "resumed": {
+            "default": false,
+            "title": "Resumed",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "uploaded": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PortalUploadedOut"
+            },
+            "title": "Uploaded",
+            "type": "array"
+          },
+          "vendor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Name"
+          }
+        },
+        "required": [
+          "token",
+          "kind",
+          "status",
+          "vendor_name",
+          "case_ref",
+          "invoice_number",
+          "docs_needed",
+          "docs_received",
+          "checks",
+          "message",
+          "open"
+        ],
+        "title": "PortalOut",
+        "type": "object"
+      },
+      "PortalUploadedOut": {
+        "properties": {
+          "checks": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "integer"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "filename",
+          "label",
+          "confidence",
+          "checks"
+        ],
+        "title": "PortalUploadedOut",
+        "type": "object"
+      },
+      "RerunIn": {
+        "properties": {
+          "from_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Stage"
+          }
+        },
+        "title": "RerunIn",
+        "type": "object"
+      },
+      "ReviewActionOut": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "changeset": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changeset"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "id",
+          "actor",
+          "action",
+          "text",
+          "changeset",
+          "created_at"
+        ],
+        "title": "ReviewActionOut",
+        "type": "object"
+      },
+      "ReviewIn": {
+        "properties": {
+          "action": {
+            "enum": [
+              "approve",
+              "remark",
+              "reject",
+              "request_info"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "default": "AP Reviewer",
+            "title": "Actor",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "ReviewIn",
+        "type": "object"
+      },
+      "RuleExceptionOut": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "cases": {
+            "title": "Cases",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          }
+        },
+        "required": [
+          "rule_id",
+          "name",
+          "severity",
+          "cases",
+          "amount"
+        ],
+        "title": "RuleExceptionOut",
+        "type": "object"
+      },
+      "RuleResultOut": {
+        "properties": {
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "run_no": {
+            "title": "Run No",
+            "type": "integer"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "run_no",
+          "rule_id",
+          "status",
+          "severity",
+          "explanation",
+          "evidence"
+        ],
+        "title": "RuleResultOut",
+        "type": "object"
+      },
+      "StageEventOut": {
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "agent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Id"
+          },
+          "case_id": {
+            "title": "Case Id",
+            "type": "integer"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "input_summary": {
+            "additionalProperties": true,
+            "title": "Input Summary",
+            "type": "object"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "title": "Metrics",
+            "type": "object"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "output": {
+            "additionalProperties": true,
+            "title": "Output",
+            "type": "object"
+          },
+          "reasoning": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasoning",
+            "type": "array"
+          },
+          "run_no": {
+            "title": "Run No",
+            "type": "integer"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "stage_id": {
+            "title": "Stage Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "case_id",
+          "run_no",
+          "seq",
+          "stage_id",
+          "agent_id",
+          "action",
+          "status",
+          "outcome",
+          "input_summary",
+          "output",
+          "reasoning",
+          "metrics",
+          "started_at",
+          "ended_at"
+        ],
+        "title": "StageEventOut",
+        "type": "object"
+      },
+      "TemplateVersionOut": {
+        "properties": {
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "diff_from_prev": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff From Prev"
+          },
+          "erp_profile": {
+            "title": "Erp Profile",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "erp_profile",
+          "rows",
+          "status",
+          "diff_from_prev",
+          "created_by"
+        ],
+        "title": "TemplateVersionOut",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VendorActionIn": {
+        "properties": {
+          "actor": {
+            "default": "Admin",
+            "title": "Actor",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "VendorActionIn",
+        "type": "object"
+      },
+      "VendorActionOut": {
+        "properties": {
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "resumed_case_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Resumed Case Ids",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "vendor_id": {
+            "title": "Vendor Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "vendor_id",
+          "status",
+          "notes",
+          "resumed_case_ids"
+        ],
+        "title": "VendorActionOut",
+        "type": "object"
+      },
+      "VendorDetailOut": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "bank_last4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bank Last4"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "default_gl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Gl"
+          },
+          "email_domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Domain"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "memory": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Memory",
+            "type": "array"
+          },
+          "non_po_allowed": {
+            "title": "Non Po Allowed",
+            "type": "boolean"
+          },
+          "open_cases": {
+            "items": {
+              "$ref": "#/components/schemas/CaseOut"
+            },
+            "title": "Open Cases",
+            "type": "array"
+          },
+          "requests": {
+            "items": {
+              "$ref": "#/components/schemas/VendorRequestOut"
+            },
+            "title": "Requests",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tax_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Id"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "legal_name",
+          "aliases",
+          "tax_id",
+          "country",
+          "email_domain",
+          "bank_last4",
+          "category",
+          "status",
+          "default_gl",
+          "non_po_allowed",
+          "created_at",
+          "requests",
+          "memory",
+          "open_cases"
+        ],
+        "title": "VendorDetailOut",
+        "type": "object"
+      },
+      "VendorOut": {
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "bank_last4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bank Last4"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "default_gl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Gl"
+          },
+          "email_domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Domain"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "non_po_allowed": {
+            "title": "Non Po Allowed",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tax_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Id"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "legal_name",
+          "aliases",
+          "tax_id",
+          "country",
+          "email_domain",
+          "bank_last4",
+          "category",
+          "status",
+          "default_gl",
+          "non_po_allowed",
+          "created_at"
+        ],
+        "title": "VendorOut",
+        "type": "object"
+      },
+      "VendorRequestOut": {
+        "properties": {
+          "case_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "checks": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "docs_needed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Docs Needed",
+            "type": "array"
+          },
+          "docs_received": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Docs Received",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "proposed_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Name"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "vendor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Id"
+          }
+        },
+        "required": [
+          "id",
+          "vendor_id",
+          "case_id",
+          "kind",
+          "proposed_name",
+          "token",
+          "docs_needed",
+          "docs_received",
+          "checks",
+          "message",
+          "status",
+          "created_at"
+        ],
+        "title": "VendorRequestOut",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "LedgerFlow API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/approved": {
+      "get": {
+        "description": "Approved library. `exported=false` = not exported yet; `true` = already exported; omit for both.",
+        "operationId": "approved_api_approved_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "exported",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exported"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approved",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/cases": {
+      "get": {
+        "operationId": "list_cases_api_cases_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vendor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vendor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "submitter_email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Submitter Email"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Cases",
+        "tags": [
+          "cases"
+        ]
+      },
+      "post": {
+        "operationId": "create_api_cases_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_api_cases_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/cases/{case_id}": {
+      "get": {
+        "operationId": "get_case_api_cases__case_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Case",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/cases/{case_id}/audit-pack": {
+      "get": {
+        "operationId": "audit_pack_api_cases__case_id__audit_pack_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Audit Pack",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/cases/{case_id}/documents/{doc_id}/file": {
+      "get": {
+        "operationId": "document_file_api_cases__case_id__documents__doc_id__file_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "title": "Doc Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Document File",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/cases/{case_id}/documents/{doc_id}/pages/{page}.png": {
+      "get": {
+        "operationId": "document_page_api_cases__case_id__documents__doc_id__pages__page__png_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "title": "Doc Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "page",
+            "required": true,
+            "schema": {
+              "title": "Page",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Document Page",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/cases/{case_id}/events/stream": {
+      "get": {
+        "description": "SSE: replays stored stage_events (after Last-Event-ID, or `after` = the last seq the client has, for a\nmanual reconnect), then streams live `stage_event`, `case_updated` and `progress` events.\n`follow=false` closes after the replay.",
+        "operationId": "stream_events_api_cases__case_id__events_stream_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "follow",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Follow",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          },
+          {
+            "in": "header",
+            "name": "last-event-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Events",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/cases/{case_id}/journey": {
+      "get": {
+        "description": "Courier-style tracker for the submitter (steps from app.yaml `ui.journey`).",
+        "operationId": "journey_api_cases__case_id__journey_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Journey",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/cases/{case_id}/rerun": {
+      "post": {
+        "description": "Admin: start a new run of a failed or paused case at `from_stage` (the live view's Retry button).",
+        "operationId": "rerun_api_cases__case_id__rerun_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RerunIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rerun",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/cases/{case_id}/review": {
+      "post": {
+        "operationId": "review_api_cases__case_id__review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/cases/{case_id}/template/{version}/download": {
+      "get": {
+        "description": "One template version as the ERP profile's file (csv | xlsx).",
+        "operationId": "download_template_api_cases__case_id__template__version__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Template",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/config": {
+      "get": {
+        "description": "Resolved config (files + active Agent Studio overrides) and its hash.",
+        "operationId": "get_config_api_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Config Api Config Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Config",
+        "tags": [
+          "system",
+          "config"
+        ]
+      }
+    },
+    "/api/dashboard/metrics": {
+      "get": {
+        "description": "KPIs, cases over time, exceptions by rule, decision mix and recent cases (ranges from app.yaml `ui`).",
+        "operationId": "dashboard_metrics_api_dashboard_metrics_get",
+        "parameters": [
+          {
+            "description": "one of app.yaml ui.dashboard.ranges",
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "one of app.yaml ui.dashboard.ranges",
+              "title": "Range"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dashboard Metrics",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/exports": {
+      "get": {
+        "operationId": "list_exports_api_exports_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ExportBatchOut"
+                  },
+                  "title": "Response List Exports Api Exports Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Exports",
+        "tags": [
+          "exports"
+        ]
+      },
+      "post": {
+        "operationId": "export_api_exports_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/exports/{batch_id}/download": {
+      "get": {
+        "operationId": "download_export_api_exports__batch_id__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/fixtures": {
+      "get": {
+        "operationId": "list_fixtures_api_fixtures_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FixtureOut"
+                  },
+                  "title": "Response List Fixtures Api Fixtures Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Fixtures",
+        "tags": [
+          "fixtures"
+        ]
+      }
+    },
+    "/api/fixtures/{scenario_id}/files/{filename}": {
+      "get": {
+        "description": "Download a scenario's PDF or one of its supporting files (e.g. the S05 W-9 for the vendor portal).",
+        "operationId": "fixture_file_api_fixtures__scenario_id__files__filename__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "schema": {
+              "title": "Scenario Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "filename",
+            "required": true,
+            "schema": {
+              "title": "Filename",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Fixture File",
+        "tags": [
+          "fixtures"
+        ]
+      }
+    },
+    "/api/fixtures/{scenario_id}/run": {
+      "post": {
+        "description": "Create a case from the scenario's fixture file (source=fixture) and queue it.",
+        "operationId": "run_fixture_api_fixtures__scenario_id__run_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scenario_id",
+            "required": true,
+            "schema": {
+              "title": "Scenario Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Fixture",
+        "tags": [
+          "fixtures"
+        ]
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "operationId": "notifications_api_notifications_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "audience",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Audience"
+            }
+          },
+          {
+            "in": "query",
+            "name": "case_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Case Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationOut"
+                  },
+                  "title": "Response Notifications Api Notifications Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Notifications",
+        "tags": [
+          "master data"
+        ]
+      }
+    },
+    "/api/notifications/{notification_id}/read": {
+      "post": {
+        "operationId": "mark_read_api_notifications__notification_id__read_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "required": true,
+            "schema": {
+              "title": "Notification Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Read",
+        "tags": [
+          "master data"
+        ]
+      }
+    },
+    "/api/pos": {
+      "get": {
+        "operationId": "list_pos_api_pos_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "vendor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vendor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/POOut"
+                  },
+                  "title": "Response List Pos Api Pos Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Pos",
+        "tags": [
+          "master data"
+        ]
+      }
+    },
+    "/api/pos/{po_id}": {
+      "get": {
+        "operationId": "get_po_api_pos__po_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "po_id",
+            "required": true,
+            "schema": {
+              "title": "Po Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PODetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Po",
+        "tags": [
+          "master data"
+        ]
+      }
+    },
+    "/api/vendors": {
+      "get": {
+        "operationId": "list_vendors_api_vendors_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VendorOut"
+                  },
+                  "title": "Response List Vendors Api Vendors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Vendors",
+        "tags": [
+          "master data"
+        ]
+      }
+    },
+    "/api/vendors/{vendor_id}": {
+      "get": {
+        "operationId": "get_vendor_api_vendors__vendor_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vendor_id",
+            "required": true,
+            "schema": {
+              "title": "Vendor Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Vendor",
+        "tags": [
+          "master data"
+        ]
+      }
+    },
+    "/api/vendors/{vendor_id}/approve": {
+      "post": {
+        "operationId": "approve_api_vendors__vendor_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vendor_id",
+            "required": true,
+            "schema": {
+              "title": "Vendor Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VendorActionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve",
+        "tags": [
+          "master data"
+        ]
+      }
+    },
+    "/api/vendors/{vendor_id}/reject": {
+      "post": {
+        "operationId": "reject_api_vendors__vendor_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vendor_id",
+            "required": true,
+            "schema": {
+              "title": "Vendor Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VendorActionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject",
+        "tags": [
+          "master data"
+        ]
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Healthz",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/portal/{token}": {
+      "get": {
+        "operationId": "portal_portal__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Portal",
+        "tags": [
+          "portal"
+        ]
+      }
+    },
+    "/portal/{token}/upload": {
+      "post": {
+        "operationId": "upload_portal__token__upload_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_portal__token__upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload",
+        "tags": [
+          "portal"
+        ]
+      }
+    }
+  }
+}

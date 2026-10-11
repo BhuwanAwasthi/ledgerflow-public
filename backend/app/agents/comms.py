@@ -169,6 +169,7 @@ class CommsAgent(Agent):
                 "mailto": mailto(case.submitter_email, subject, body),
                 "portal_link": link,
                 "needs": need_ids,
+                "needs_text": needs,
                 "request_id": req.id if req else None,
                 "reasons": reasons,
             }

@@ -101,6 +101,9 @@ def case_summary(case: Case) -> dict[str, Any]:
     }
 
 
+RERUNNABLE = frozenset({CaseStatus.failed, CaseStatus.needs_review, CaseStatus.on_hold})
+
+
 # ---------------------------------------------------------------- jobs
 @dataclass
 class Resume:
@@ -208,6 +211,30 @@ class Orchestrator:
                     return False
                 self._accept_resume(s, cfg, case, Resume(stage.id, None, event=event))
                 return True
+
+    async def rerun(self, case_id: int, from_stage: str | None = None) -> str:
+        """Admin rerun / the live view's Retry: start a new run at `from_stage` (default: the stage the case
+        failed or paused at). Only failed or paused cases: approved, exported and rejected cases are final, and
+        a running case is refused. Returns the stage the run starts at."""
+        async with self._locks[case_id]:
+            with self.session_factory() as s:
+                case = self._get_case(s, case_id)
+                if case.status not in RERUNNABLE:
+                    raise OrchestratorError(
+                        f"case {case.ref} cannot be rerun in status {case.status} "
+                        f"(allowed: {', '.join(sorted(RERUNNABLE))})"
+                    )
+                cfg = self.case_config(s, case)
+                target = from_stage or case.current_stage
+                if not target or self._stage_or_none(cfg, target) is None:
+                    raise OrchestratorError(f"'{target}' is not a stage of this case's workflow")
+                case.status = CaseStatus.processing
+                case.current_stage = target
+                case.sla_due_at = None
+                s.commit()
+                self.bus.publish(case.id, "case_updated", case_summary(case))
+                self.enqueue(case.id, target, self._next_run_no(s, case.id))
+                return target
 
     def _accept_resume(self, s: Session, cfg: ResolvedConfig, case: Case, r: Resume) -> None:
         """Persist the paused stage's completion and the next target before queueing, so an accepted
