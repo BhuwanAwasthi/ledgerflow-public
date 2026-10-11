@@ -17,6 +17,7 @@ const SubmitPage = lazy(() => import("@/pages/SubmitPage"));
 const MySubmissionsPage = lazy(() => import("@/pages/MySubmissionsPage"));
 const ScenariosPage = lazy(() => import("@/pages/ScenariosPage"));
 const CasesPage = lazy(() => import("@/pages/CasesPage"));
+const ReviewPage = lazy(() => import("@/pages/ReviewPage"));
 const ComingSoonPage = lazy(() => import("@/pages/ComingSoonPage"));
 
 const queryClient = new QueryClient({
@@ -40,7 +41,16 @@ function PageFallback() {
 
 function ThemedToaster() {
   const { dark } = usePrefs();
-  return <Toaster theme={dark ? "dark" : "light"} richColors closeButton position="bottom-right" />;
+  return (
+    <Toaster
+      theme={dark ? "dark" : "light"}
+      richColors
+      closeButton
+      position="bottom-right"
+      offset={96} // clear of the review workspace's sticky action bar
+      toastOptions={{ classNames: { toast: "border shadow-lg", closeButton: "bg-card border text-muted-foreground" } }}
+    />
+  );
 }
 
 function Home() {
@@ -67,7 +77,7 @@ const router = createBrowserRouter([
       { path: "/cases", element: <CasesPage /> },
       { path: "/cases/:id/live", element: <LiveRunPage /> },
       { path: "/cases/:id", element: <Navigate to="live" replace /> },
-      { path: "/cases/:id/review", element: soon("Review workspace", "F2", "Source PDF beside the ERP template, rule checklist, PO match and remark loop.") },
+      { path: "/cases/:id/review", element: <ReviewPage /> },
       { path: "/scenarios", element: <ScenariosPage /> },
       { path: "/library", element: soon("Approved library", "F3", "Approved invoices with single, ZIP and batch ERP export.") },
       { path: "/vendors", element: soon("Vendors", "F3", "Vendor master, onboarding requests and verification checks.") },

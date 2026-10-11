@@ -12,6 +12,8 @@ interface ToneStyle {
   soft: string; // tinted panel background
   border: string;
   chart: string; // hex for recharts
+  ring: string; // inset outline (review-grid cells, PDF highlights)
+  solid: string; // filled action button (Approve, ...)
 }
 
 const TONES: Record<Tone, ToneStyle> = {
@@ -22,6 +24,8 @@ const TONES: Record<Tone, ToneStyle> = {
     soft: "bg-emerald-50/70 dark:bg-emerald-500/[0.07]",
     border: "border-emerald-300 dark:border-emerald-500/40",
     chart: "#10b981",
+    ring: "ring-1 ring-inset ring-emerald-500/50",
+    solid: "bg-emerald-600 text-white hover:bg-emerald-600/90 dark:bg-emerald-600 dark:text-white dark:hover:bg-emerald-500",
   },
   teal: {
     badge: "bg-teal-50 text-teal-700 ring-teal-600/20 dark:bg-teal-500/10 dark:text-teal-300 dark:ring-teal-400/25",
@@ -30,6 +34,8 @@ const TONES: Record<Tone, ToneStyle> = {
     soft: "bg-teal-50/70 dark:bg-teal-500/[0.07]",
     border: "border-teal-300 dark:border-teal-500/40",
     chart: "#14b8a6",
+    ring: "ring-1 ring-inset ring-teal-500/50",
+    solid: "bg-teal-600 text-white hover:bg-teal-600/90 dark:bg-teal-600 dark:text-white dark:hover:bg-teal-500",
   },
   amber: {
     badge: "bg-amber-50 text-amber-800 ring-amber-600/25 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/25",
@@ -38,6 +44,8 @@ const TONES: Record<Tone, ToneStyle> = {
     soft: "bg-amber-50/70 dark:bg-amber-400/[0.07]",
     border: "border-amber-300 dark:border-amber-400/40",
     chart: "#f59e0b",
+    ring: "ring-1 ring-inset ring-amber-500/50",
+    solid: "bg-amber-600 text-white hover:bg-amber-600/90 dark:bg-amber-600 dark:text-white dark:hover:bg-amber-500",
   },
   sky: {
     badge: "bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-400/25",
@@ -46,6 +54,8 @@ const TONES: Record<Tone, ToneStyle> = {
     soft: "bg-sky-50/70 dark:bg-sky-400/[0.07]",
     border: "border-sky-300 dark:border-sky-400/40",
     chart: "#0ea5e9",
+    ring: "ring-1 ring-inset ring-sky-500/50",
+    solid: "bg-sky-600 text-white hover:bg-sky-600/90 dark:bg-sky-600 dark:text-white dark:hover:bg-sky-500",
   },
   rose: {
     badge: "bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-400/25",
@@ -54,6 +64,8 @@ const TONES: Record<Tone, ToneStyle> = {
     soft: "bg-rose-50/70 dark:bg-rose-500/[0.07]",
     border: "border-rose-300 dark:border-rose-500/40",
     chart: "#f43f5e",
+    ring: "ring-1 ring-inset ring-rose-500/50",
+    solid: "bg-rose-600 text-white hover:bg-rose-600/90 dark:bg-rose-600 dark:text-white dark:hover:bg-rose-500",
   },
   violet: {
     badge: "bg-violet-50 text-violet-700 ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-400/25",
@@ -62,6 +74,8 @@ const TONES: Record<Tone, ToneStyle> = {
     soft: "bg-violet-50/70 dark:bg-violet-500/[0.07]",
     border: "border-violet-300 dark:border-violet-500/40",
     chart: "#8b5cf6",
+    ring: "ring-1 ring-inset ring-violet-500/50",
+    solid: "bg-violet-600 text-white hover:bg-violet-600/90 dark:bg-violet-600 dark:text-white dark:hover:bg-violet-500",
   },
   indigo: {
     badge: "bg-indigo-50 text-indigo-700 ring-indigo-600/20 dark:bg-indigo-500/10 dark:text-indigo-300 dark:ring-indigo-400/25",
@@ -70,6 +84,8 @@ const TONES: Record<Tone, ToneStyle> = {
     soft: "bg-indigo-50/70 dark:bg-indigo-500/[0.07]",
     border: "border-indigo-300 dark:border-indigo-500/40",
     chart: "#6366f1",
+    ring: "ring-1 ring-inset ring-indigo-500/50",
+    solid: "bg-indigo-600 text-white hover:bg-indigo-600/90 dark:bg-indigo-600 dark:text-white dark:hover:bg-indigo-500",
   },
   slate: {
     badge: "bg-slate-100 text-slate-700 ring-slate-500/20 dark:bg-slate-400/10 dark:text-slate-300 dark:ring-slate-400/20",
@@ -78,6 +94,8 @@ const TONES: Record<Tone, ToneStyle> = {
     soft: "bg-slate-50 dark:bg-slate-400/[0.06]",
     border: "border-slate-300 dark:border-slate-500/40",
     chart: "#94a3b8",
+    ring: "ring-1 ring-inset ring-slate-500/50",
+    solid: "bg-slate-600 text-white hover:bg-slate-600/90 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500",
   },
 };
 
@@ -135,13 +153,30 @@ const SEVERITY: Record<string, StatusDef> = {
   info: { label: "Info", tone: "slate" },
 };
 
-export type StatusKind = "case" | "decision" | "stage" | "rule" | "severity";
+/** Review action (review_actions.action): the History thread. */
+const REVIEW_ACTION: Record<string, StatusDef> = {
+  approve: { label: "Approved", tone: "emerald" },
+  reject: { label: "Rejected", tone: "rose" },
+  request_info: { label: "Asked the vendor", tone: "sky" },
+  override: { label: "Override", tone: "amber" },
+  remark: { label: "Requested changes", tone: "indigo" },
+};
+
+/** PO balance after this invoice (review workspace mini-bar). */
+const BALANCE: Record<string, StatusDef> = {
+  within: { label: "Within balance", tone: "emerald" },
+  over: { label: "Over balance", tone: "rose" },
+};
+
+export type StatusKind = "case" | "decision" | "stage" | "rule" | "severity" | "review_action" | "balance";
 const KINDS: Record<StatusKind, Record<string, StatusDef>> = {
   case: CASE,
   decision: DECISION,
   stage: STAGE,
   rule: RULE,
   severity: SEVERITY,
+  review_action: REVIEW_ACTION,
+  balance: BALANCE,
 };
 
 function humanise(value: string): string {

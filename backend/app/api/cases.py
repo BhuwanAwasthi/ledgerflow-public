@@ -12,7 +12,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app import pdf
 from app.api.deps import current_config, get_orchestrator, get_session, get_storage
-from app.api.schemas import CaseDetailOut, CaseListOut, CaseOut, JourneyOut, RerunIn, ReviewIn
+from app.api.schemas import CaseDetailOut, CaseListOut, CaseOut, JourneyOut, RerunIn, ReviewIn, WorkspaceOut
 from app.cases import UploadedFile, create_case
 from app.config_loader import ResolvedConfig
 from app.db import dumps
@@ -31,6 +31,7 @@ from app.models import (
 )
 from app.orchestrator import Orchestrator, OrchestratorError, case_summary, event_to_dict
 from app.storage import Storage
+from app.workspace import build_workspace
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
 
@@ -221,10 +222,13 @@ async def stream_events(
 @router.post("/{case_id}/review", response_model=CaseOut)
 async def review(case_id: int, body: ReviewIn, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     await run_in_threadpool(_load_case, s, case_id)
-    if body.action in ("remark", "reject") and not (body.text or "").strip():
+    if body.ops and body.action != "remark":
+        raise HTTPException(422, "`ops` can only be sent with a remark")
+    if body.action in ("remark", "reject") and not ((body.text or "").strip() or body.ops):
         raise HTTPException(422, f"`text` is required for {body.action}")
+    ops = [op.model_dump(mode="json") for op in body.ops] if body.ops else None
     try:
-        await orch.submit_review(case_id, body.action, body.text, body.actor)
+        await orch.submit_review(case_id, body.action, body.text, body.actor, ops)
     except OrchestratorError as e:
         raise HTTPException(409, str(e)) from e
     return await run_in_threadpool(_reloaded, s, orch, case_id)
@@ -252,6 +256,13 @@ def journey(case_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     case = _load_case(s, case_id)
     events = s.scalars(select(StageEvent).where(StageEvent.case_id == case_id).order_by(StageEvent.seq)).all()
     return build_journey(orch.case_config(s, case), case, list(events))
+
+
+@router.get("/{case_id}/workspace", response_model=WorkspaceOut)
+def workspace(case_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
+    """Review workspace view: editable template columns, amber cells, PO match and balance, latest draft."""
+    case = _load_case(s, case_id)
+    return build_workspace(s, orch.case_config(s, case), case)
 
 
 def _download(data: bytes, mime: str, filename: str, inline: bool = False) -> Response:

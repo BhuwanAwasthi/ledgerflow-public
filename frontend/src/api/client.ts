@@ -18,6 +18,16 @@ export type JourneyStep = S["JourneyStepOut"];
 export type Fixture = S["FixtureOut"];
 export type Notification = S["NotificationOut"];
 export type Health = S["HealthOut"];
+export type DocumentInfo = S["DocumentOut"];
+export type RuleResult = S["RuleResultOut"];
+export type TemplateVersion = S["TemplateVersionOut"];
+export type ReviewActionRow = S["ReviewActionOut"];
+export type Workspace = S["WorkspaceOut"];
+export type WorkspaceColumn = S["WorkspaceColumnOut"];
+export type CellFlag = S["CellFlagOut"];
+export type POBalance = S["POBalanceOut"];
+export type GridOp = S["SetFieldOp"] | S["SetGLOp"];
+export type ReviewBody = S["ReviewIn"];
 
 export class ApiError extends Error {
   constructor(

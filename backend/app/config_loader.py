@@ -11,7 +11,7 @@ import re
 import string
 from collections import deque
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import yaml
 from jinja2 import TemplateSyntaxError
@@ -96,6 +96,11 @@ class DashboardSettings(_Strict):
         return self
 
 
+class ReviewSettings(_Strict):
+    # review grid: an extracted value read below this confidence is shown amber
+    low_confidence_below: float = Field(default=0.9, ge=0, le=1)
+
+
 class UISettings(_Strict):
     journey: list[JourneyStep] = Field(default_factory=list)
     # agent id -> chip templates shown on live-run cards; `{path|format}` placeholders read the stage output
@@ -105,6 +110,7 @@ class UISettings(_Strict):
     # a hold waits for (comms draft), joined with "and"
     status_text: dict[str, str] = Field(default_factory=dict)
     cold_start_after_ms: int = Field(default=2500, ge=0)  # show "Waking the engine" when /healthz is slower
+    review: ReviewSettings = Field(default_factory=ReviewSettings)
 
 
 class AppConfig(_Open):
@@ -198,6 +204,12 @@ class Rule(_Strict):
     applies_to: Literal["po", "non_po", "all"]
     severity: Severity
     fail_label: str | None = None  # short name for the exception when the rule fails (dashboard); default: name
+    # review grid cells a failure marks amber: invoice fields (`total`), line fields (`lines.amount`, only on the
+    # lines named in the evidence's line_indexes / items[].line_index), `po`, `vendor`, or `evidence:<key>` for a
+    # list of field names in the evidence (e.g. required_fields' `missing`)
+    highlight: list[Annotated[str, Field(pattern=r"^(evidence:[a-z_]+|lines\.[a-z_]+|[a-z_]+)$")]] = Field(
+        default_factory=list
+    )
     params: dict[str, Any] = Field(default_factory=dict)
     explain: str
 

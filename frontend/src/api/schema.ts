@@ -209,6 +209,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases/{case_id}/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Workspace
+         * @description Review workspace view: editable template columns, amber cells, PO match and balance, latest draft.
+         */
+        get: operations["workspace_api_cases__case_id__workspace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/config": {
         parameters: {
             query?: never;
@@ -766,6 +786,37 @@ export interface components {
             /** Vendor Name */
             vendor_name?: string | null;
         };
+        /** CellEditOut */
+        CellEditOut: {
+            /** Field */
+            field: string;
+            /**
+             * Input
+             * @enum {string}
+             */
+            input: "money" | "number" | "date" | "text";
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "set_field" | "set_gl";
+            /** Path */
+            path: string | null;
+        };
+        /** CellFlagOut */
+        CellFlagOut: {
+            /** Column */
+            column: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "low_confidence" | "rule";
+            /** Reasons */
+            reasons: string[];
+            /** Row */
+            row: number;
+        };
         /** DashboardKpisOut */
         DashboardKpisOut: {
             /** Cases */
@@ -851,6 +902,17 @@ export interface components {
             pages: number | null;
             /** Sha256 */
             sha256: string;
+        };
+        /** DuplicateLinkOut */
+        DuplicateLinkOut: {
+            /** Case Id */
+            case_id: number;
+            /** Explanation */
+            explanation: string;
+            /** Ref */
+            ref: string | null;
+            /** Rule Id */
+            rule_id: string;
         };
         /** ExportBatchOut */
         ExportBatchOut: {
@@ -1045,6 +1107,29 @@ export interface components {
             reason: string | null;
             /** Source */
             source: string;
+        };
+        /** POBalanceOut */
+        POBalanceOut: {
+            /** Amended */
+            amended: boolean;
+            /** Amount */
+            amount: string;
+            /** Committed By Others */
+            committed_by_others: string;
+            /** Currency */
+            currency: string;
+            /** Master Amount */
+            master_amount: string;
+            /** Po Number */
+            po_number: string;
+            /** Remaining After */
+            remaining_after: string;
+            /** Remaining Before */
+            remaining_before: string;
+            /** This Invoice */
+            this_invoice: string;
+            /** This State */
+            this_state: string | null;
         };
         /** POConsumptionOut */
         POConsumptionOut: {
@@ -1253,6 +1338,8 @@ export interface components {
              * @default AP Reviewer
              */
             actor: string;
+            /** Ops */
+            ops?: (components["schemas"]["SetFieldOp"] | components["schemas"]["SetGLOp"])[] | null;
             /** Text */
             text?: string | null;
         };
@@ -1287,6 +1374,32 @@ export interface components {
             severity: string;
             /** Status */
             status: string;
+        };
+        /** SetFieldOp */
+        SetFieldOp: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "set_field";
+            /** Path */
+            path: string;
+            /** Value */
+            value: number | string | boolean | null;
+        };
+        /** SetGLOp */
+        SetGLOp: {
+            /** Department */
+            department: string | null;
+            /** Gl Code */
+            gl_code: string;
+            /** Line Index */
+            line_index: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "set_gl";
         };
         /** StageEventOut */
         StageEventOut: {
@@ -1488,6 +1601,46 @@ export interface components {
             token: string;
             /** Vendor Id */
             vendor_id: number | null;
+        };
+        /** WorkspaceColumnOut */
+        WorkspaceColumnOut: {
+            /** Binds */
+            binds: string[];
+            edit: components["schemas"]["CellEditOut"] | null;
+            /** Header */
+            header: string;
+            /** Required */
+            required: boolean;
+        };
+        /** WorkspaceOut */
+        WorkspaceOut: {
+            /** Case Id */
+            case_id: number;
+            /** Cells */
+            cells: components["schemas"]["CellFlagOut"][];
+            /** Columns */
+            columns: components["schemas"]["WorkspaceColumnOut"][];
+            /** Draft */
+            draft: {
+                [key: string]: unknown;
+            } | null;
+            /** Duplicates */
+            duplicates: components["schemas"]["DuplicateLinkOut"][];
+            /** Erp Profile */
+            erp_profile: string | null;
+            /** Grain */
+            grain: string | null;
+            /** Invoice */
+            invoice: {
+                [key: string]: unknown;
+            };
+            /** Match */
+            match: {
+                [key: string]: unknown;
+            } | null;
+            po_balance: components["schemas"]["POBalanceOut"] | null;
+            /** Reviewable */
+            reviewable: boolean;
         };
     };
     responses: never;
@@ -1883,6 +2036,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    workspace_api_cases__case_id__workspace_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceOut"];
                 };
             };
             /** @description Validation Error */

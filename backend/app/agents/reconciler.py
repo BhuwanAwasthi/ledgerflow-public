@@ -50,6 +50,30 @@ _MONEY_FIELDS = {"subtotal", "tax_total", "shipping", "total"}
 _LINE_NUMBERS = {"qty", "unit_price", "amount", "tax_rate"}
 
 
+def edit_input(field: str, *, line: bool) -> str | None:
+    """Input kind ('money' | 'number' | 'date' | 'text') for an invoice field `set_field` accepts, or None.
+    `line=True` asks about a line field (`lines[i].<field>`). The review grid uses it to decide editable cells."""
+    if line:
+        if field not in InvoiceLine.model_fields:
+            return None
+        return ("money" if field in ("unit_price", "amount") else "number") if field in _LINE_NUMBERS else "text"
+    if field not in InvoiceExtraction.model_fields or field in _NOT_EDITABLE:
+        return None
+    if field in _MONEY_FIELDS:
+        return "money"
+    return "date" if field in ("invoice_date", "due_date") else "text"
+
+
+def grid_editable(path: str) -> bool:
+    """A `set_field` path the review grid may send: an editable header field or `lines[i].<field>`."""
+    m = _PATH.match(path.strip())
+    if not m or m["bank"] is not None:
+        return False
+    if m["idx"] is not None:
+        return m["field"] == "lines" and edit_input(m["sub"], line=True) is not None
+    return edit_input(m["field"], line=False) is not None
+
+
 def _norm_po(v: str | None) -> str:
     return re.sub(r"[^A-Z0-9]", "", (v or "").upper())
 
@@ -103,31 +127,44 @@ class ReconcilerAgent(Agent):
                 .where(ReviewActionRow.case_id == case.id, ReviewActionRow.action == "remark")
                 .order_by(ReviewActionRow.id.desc())
             ).first()
-            if remark is None or not (remark.text or "").strip():
+            grid = (remark.changeset or {}).get("source") == "grid" if remark is not None else False
+            if remark is None or not (grid or (remark.text or "").strip()):
                 return AgentResult(
                     "needs_clarification",
                     {"question": "There is no remark to apply. What should change?", "applied": False},
                     ["No reviewer remark found for this case."],
                 )
-            await ctx.emit("reading the remark")
-            out, call = await self.call_llm(
-                ctx,
-                action,
-                ChangeSet,
-                [text_part("Return the ChangeSet for this remark now.")],
-                prompt_vars={
-                    "case_json": json.dumps(self._case_json(s, case, ctx.state), indent=1, default=str),
-                    "reviewer": remark.actor,
-                    "remark": remark.text,
-                    "non_overridable": ctx.params.get("non_overridable_rules", []),
-                },
-                context={**llm_context(ctx, s), "remark": remark.text},
-            )
-            assert isinstance(out, ChangeSet)
-            metrics = sum_metrics([call])
+            if grid:  # typed edits from the review grid: already ops, so no LLM call; same validation below
+                ops = (remark.changeset or {}).get("ops") or []
+                bad = [op.get("path") for op in ops if op.get("op") == "set_field" and not grid_editable(str(op.get("path")))]
+                if bad:  # the grid only edits cells the workspace offers; bank details change via a verified bank letter
+                    question = f"These fields can't be edited in the grid: {', '.join(map(str, bad))}."
+                    remark.changeset = {**(remark.changeset or {}), "status": "needs_clarification", "errors": [question], "question": question}
+                    s.commit()
+                    return AgentResult("needs_clarification", {"question": question, "errors": [question], "applied": False},
+                                       [f"Rejected grid edit(s): {question}"])
+                out = ChangeSet.model_validate({"ops": ops, "summary": remark.text or f"{len(ops)} edit(s) in the review grid"})
+                metrics: dict[str, Any] = {}
+            else:
+                await ctx.emit("reading the remark")
+                out, call = await self.call_llm(
+                    ctx,
+                    action,
+                    ChangeSet,
+                    [text_part("Return the ChangeSet for this remark now.")],
+                    prompt_vars={
+                        "case_json": json.dumps(self._case_json(s, case, ctx.state), indent=1, default=str),
+                        "reviewer": remark.actor,
+                        "remark": remark.text,
+                        "non_overridable": ctx.params.get("non_overridable_rules", []),
+                    },
+                    context={**llm_context(ctx, s), "remark": remark.text},
+                )
+                assert isinstance(out, ChangeSet)
+                metrics = sum_metrics([call])
             draft = _Draft(effective(ctx.state).get("reconciler") or {}, ctx.state)
             errors, questions = self._validate_and_apply(s, ctx, case, out, draft, remark.text or "")
-            changeset = out.model_dump(mode="json")
+            changeset = {**out.model_dump(mode="json"), "source": "grid" if grid else "remark"}
 
             if errors or questions:
                 question = " ".join(questions) if questions else (
@@ -139,7 +176,7 @@ class ReconcilerAgent(Agent):
                     "needs_clarification",
                     {"question": question, "errors": errors, "changeset": changeset, "applied": False},
                     [
-                        f"Model proposed {len(out.ops)} change(s): {out.summary}",
+                        f"{'Grid sent' if grid else 'Model proposed'} {len(out.ops)} change(s): {out.summary}",
                         *(f"Rejected: {e}." for e in errors[:3]),
                         f"Asked the reviewer: {question}",
                     ][:5],

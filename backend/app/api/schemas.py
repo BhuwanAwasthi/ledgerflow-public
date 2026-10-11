@@ -4,9 +4,14 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.llm_schemas import SetFieldOp, SetGLOp
+
+# Typed edits the review grid sends with a remark (applied by the reconciler without the LLM).
+GridOp = Annotated[SetFieldOp | SetGLOp, Field(discriminator="op")]
 
 
 class _ORM(BaseModel):
@@ -139,6 +144,7 @@ class ReviewIn(BaseModel):
     action: Literal["approve", "remark", "reject", "request_info"]
     text: str | None = None
     actor: str = "AP Reviewer"
+    ops: list[GridOp] | None = None  # remark only: inline grid edits as set_field / set_gl ops
 
 
 class FixtureFileOut(BaseModel):
@@ -388,3 +394,58 @@ class DashboardOut(BaseModel):
     exceptions_by_rule: list[RuleExceptionOut]
     seeded_cases: int
     recent: list[CaseOut]
+
+
+class CellEditOut(BaseModel):
+    op: Literal["set_field", "set_gl"]
+    field: str  # invoice field, line field, or gl_code / department for set_gl
+    path: str | None  # set_field path; `{i}` = the row's line index
+    input: Literal["money", "number", "date", "text"]
+
+
+class WorkspaceColumnOut(BaseModel):
+    header: str
+    required: bool
+    binds: list[str]  # what the cell reads: `invoice_number`, `lines.amount`, `po`, `vendor`
+    edit: CellEditOut | None
+
+
+class CellFlagOut(BaseModel):
+    row: int
+    column: str
+    kind: Literal["low_confidence", "rule"]
+    reasons: list[str]
+
+
+class POBalanceOut(BaseModel):
+    po_number: str
+    currency: str
+    master_amount: Decimal
+    amount: Decimal  # effective for this case (a reviewer amendment raises it)
+    amended: bool
+    committed_by_others: Decimal
+    this_invoice: Decimal
+    remaining_before: Decimal
+    remaining_after: Decimal
+    this_state: str | None  # reserved | consumed | None
+
+
+class DuplicateLinkOut(BaseModel):
+    rule_id: str
+    case_id: int
+    ref: str | None
+    explanation: str
+
+
+class WorkspaceOut(BaseModel):
+    case_id: int
+    erp_profile: str | None
+    grain: str | None
+    columns: list[WorkspaceColumnOut]
+    cells: list[CellFlagOut]
+    invoice: dict[str, Any]
+    match: dict[str, Any] | None
+    po_balance: POBalanceOut | None
+    draft: dict[str, Any] | None
+    duplicates: list[DuplicateLinkOut]
+    reviewable: bool

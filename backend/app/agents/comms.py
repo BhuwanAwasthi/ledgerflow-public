@@ -33,6 +33,9 @@ from app.settings import get_settings
 _JINJA = SandboxedEnvironment(autoescape=False)
 
 
+REVIEWER_PREFIX = "Reviewer: "
+
+
 def mailto(to: str | None, subject: str, body: str) -> str:
     return f"mailto:{quote(to or '')}?subject={quote(subject)}&body={quote(body)}"
 
@@ -79,7 +82,7 @@ class CommsAgent(Agent):
             select(ReviewActionRow).where(ReviewActionRow.case_id == case.id).order_by(ReviewActionRow.id.desc())
         ).first()
         if last is not None and last.action in ("request_info", "reject") and last.text:
-            reasons.insert(0, f"Reviewer: {last.text}")
+            reasons.insert(0, f"{REVIEWER_PREFIX}{last.text}")
         return reasons
 
     def _needs(self, ctx: AgentContext, state: dict[str, Any]) -> tuple[list[str], list[str]]:
@@ -221,6 +224,7 @@ class CommsAgent(Agent):
                 f"- {r}" for r in reasons) + f"\n\nKind regards,\n{v['signature']}"
         else:
             subject = f"Invoice {number}: information needed"
+            asked = [r.removeprefix(REVIEWER_PREFIX) for r in reasons if r.startswith(REVIEWER_PREFIX)]  # the reviewer's words
             body = f"Hello {v['recipient_name']},\n\nBefore we can process invoice {number} for {v['currency']} {v['total']} we need:\n" + "\n".join(
-                f"- {n}" for n in needs) + f"\n\nKind regards,\n{v['signature']}"
+                f"- {n}" for n in [*asked, *needs]) + f"\n\nKind regards,\n{v['signature']}"
         return subject, body

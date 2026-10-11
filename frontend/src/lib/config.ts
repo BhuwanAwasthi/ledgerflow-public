@@ -32,6 +32,7 @@ export interface UiConf {
   dashboard: { ranges: string[]; default_range: string; recent_cases: number };
   status_text: Record<string, string>;
   cold_start_after_ms: number;
+  review: { low_confidence_below: number };
 }
 
 export interface AppConf {

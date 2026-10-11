@@ -279,12 +279,19 @@ class Orchestrator:
             return len(rows)
 
     # ---------------- external triggers
-    async def submit_review(self, case_id: int, action: str, text: str | None, actor: str) -> None:
-        await self.call(self._submit_review(case_id, action, text, actor))
+    async def submit_review(
+        self, case_id: int, action: str, text: str | None, actor: str, ops: list[dict[str, Any]] | None = None
+    ) -> None:
+        """`ops` = typed edits from the review grid (a remark only): the reconciler applies them without the LLM."""
+        await self.call(self._submit_review(case_id, action, text, actor, ops))
 
-    async def _submit_review(self, case_id: int, action: str, text: str | None, actor: str) -> None:
+    async def _submit_review(
+        self, case_id: int, action: str, text: str | None, actor: str, ops: list[dict[str, Any]] | None
+    ) -> None:
         if action not in {a.value for a in ReviewAction}:
             raise OrchestratorError(f"unknown review action '{action}'")
+        if ops and action != ReviewAction.remark:
+            raise OrchestratorError("typed edits (`ops`) can only be sent with a remark")
         with self.session_factory() as s:  # fail fast instead of waiting for a running LLM stage
             status = self._get_case(s, case_id).status
         if status != CaseStatus.needs_review:
@@ -298,7 +305,8 @@ class Orchestrator:
                     raise OrchestratorError(
                         f"case {case.ref} is not waiting for review (status {case.status}, stage {case.current_stage})"
                     )
-                s.add(ReviewActionRow(case_id=case_id, actor=actor, action=action, text=text))
+                changeset = {"source": "grid", "ops": ops, "status": "pending"} if ops else None
+                s.add(ReviewActionRow(case_id=case_id, actor=actor, action=action, text=text, changeset=changeset))
                 self._accept_resume(s, cfg, case, Resume(stage.id, action, text=text, actor=actor))
 
     async def fire_event(self, case_id: int, event: str) -> bool:

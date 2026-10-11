@@ -280,13 +280,13 @@ export default function LiveRunPage() {
               )}
             </div>
             <div className="flex flex-wrap gap-2 border-t px-5 py-3">
-              {status === "needs_review" && (
-                <Button size="sm" asChild>
+              {status && !ACTIVE_CASE_STATUSES.has(status) && (c?.templates.length || c?.rule_results.length) ? (
+                <Button size="sm" variant={status === "needs_review" ? "default" : "outline"} asChild>
                   <Link to={`/cases/${id}/review`}>
-                    <FileSearch /> Open review
+                    <FileSearch /> {status === "needs_review" ? "Open review" : "Workspace"}
                   </Link>
                 </Button>
-              )}
+              ) : null}
               <Button size="sm" variant="outline" asChild>
                 <Link to={`/submissions?case=${id}`}>
                   <Route /> Journey

@@ -1,6 +1,8 @@
 # Procurement policy. Deterministic: evaluated in code by backend/app/rules/engine.py.
 # severity on failure: reject > hold > review > info (info never blocks auto-approve)
 # explain: Jinja2 template rendered with the rule's evidence dict -> shown to reviewers verbatim.
+# highlight: review-grid cells a failure marks amber (invoice fields, lines.<field> on the lines in the evidence,
+#            po, vendor, or evidence:<key> = a list of field names in the evidence).
 
 currency: USD
 decision_precedence: [reject, hold, review]
@@ -18,6 +20,7 @@ rules:
     enabled: true
     applies_to: all
     severity: hold
+    highlight: [evidence:missing]
     params: { fields: [invoice_number, invoice_date, total, vendor_name] }
     explain: "Missing {{ missing | join(', ') }}. We need these before the invoice can be processed."
 
@@ -36,6 +39,7 @@ rules:
     enabled: true
     applies_to: all
     severity: review
+    highlight: [evidence:fields]
     params: { min_confidence: 0.60 }
     explain: "Low read confidence on {{ fields | join(', ') }}; please confirm against the document."
 
@@ -45,6 +49,7 @@ rules:
     enabled: true
     applies_to: all
     severity: review
+    highlight: [subtotal, tax_total, total, lines.amount]
     params: { abs_tolerance: 0.05 }
     explain: "Lines {{ lines_sum }} + tax {{ tax }} + shipping {{ shipping }} = {{ computed }}, but the invoice total is {{ total }}."
 
@@ -54,6 +59,7 @@ rules:
     enabled: true
     applies_to: all
     severity: reject
+    highlight: [invoice_number, total]
     params: {}
     explain: "Same vendor, invoice number {{ number }} and amount {{ amount }} as {{ other_ref }} (received {{ other_date }})."
 
@@ -63,6 +69,7 @@ rules:
     enabled: true
     applies_to: all
     severity: review
+    highlight: [invoice_number, total]
     params: { window_days: 30 }
     explain: "Same vendor and amount {{ amount }} as {{ other_ref }} within {{ days }} days, with a different invoice number."
 
@@ -72,6 +79,7 @@ rules:
     enabled: true
     applies_to: all
     severity: hold
+    highlight: [vendor]
     params: {}
     explain: "{{ vendor_name }} is {{ status }} in the vendor master."
 
@@ -81,6 +89,7 @@ rules:
     enabled: true
     applies_to: all
     severity: hold
+    highlight: [vendor]
     params: {}
     explain: "Invoice asks for payment to account ending {{ invoice_last4 }}, but the vendor master has {{ master_last4 }}. Changed bank details are a common payment-fraud pattern; we need a signed bank letter."
 
@@ -90,6 +99,7 @@ rules:
     enabled: true
     applies_to: po
     severity: review
+    highlight: [po]
     params: {}
     explain: "{{ reason }}"
 
@@ -99,6 +109,7 @@ rules:
     enabled: true
     applies_to: po
     severity: review
+    highlight: [po]
     params: { min_score: 0.85 }
     explain: "No PO number on the invoice. Best match is {{ po_number }} (score {{ score }}); please confirm."
 
@@ -108,6 +119,7 @@ rules:
     enabled: true
     applies_to: po
     severity: review
+    highlight: [lines.unit_price, lines.amount]
     params: { pct: 2.0, abs: 50.0, mode: both_must_exceed }   # both_must_exceed | either_exceeds
     explain: "{{ line_desc }}: invoiced {{ inv_price }} vs PO {{ po_price }} ({{ pct }}%, {{ abs_diff }} per unit). Tolerance {{ tol_pct }}% / {{ tol_abs }}."
 
@@ -117,6 +129,7 @@ rules:
     enabled: true
     applies_to: po
     severity: review
+    highlight: [lines.qty]
     params: {}
     explain: "{{ line_desc }}: invoiced qty {{ inv_qty }} but only {{ grn_qty }} received."
 
@@ -126,6 +139,7 @@ rules:
     enabled: true
     applies_to: po
     severity: review
+    highlight: [po, subtotal]
     params: { pct: 2.0 }
     explain: "Invoice subtotal {{ amount }} vs PO {{ po_number }} remaining {{ remaining }} (already invoiced {{ consumed }} of {{ po_amount }}): over by {{ over_pct }}%, tolerance {{ tol_pct }}%."
 
@@ -135,6 +149,7 @@ rules:
     enabled: true
     applies_to: po
     severity: review
+    highlight: [lines.description, lines.gl_code]
     params: {}
     explain: "Lines not on {{ po_number }}: {{ lines | join('; ') }}."
 
@@ -144,6 +159,7 @@ rules:
     enabled: true
     applies_to: non_po
     severity: review
+    highlight: [lines.gl_code]
     params: {}
     explain: "No PO found. Suggested coding {{ gl_code }} {{ gl_name }}; route to budget owner."
 
@@ -153,6 +169,7 @@ rules:
     enabled: true
     applies_to: po
     severity: review
+    highlight: [currency]
     params: {}
     explain: "Invoice in {{ inv_currency }}, PO in {{ po_currency }}."
 
@@ -162,6 +179,7 @@ rules:
     enabled: true
     applies_to: all
     severity: review
+    highlight: [invoice_date]
     params: { max_future_days: 3, max_age_days: 365 }
     explain: "Invoice date {{ date }} is {{ reason }}."
 
@@ -171,5 +189,6 @@ rules:
     enabled: true
     applies_to: all
     severity: review
+    highlight: [tax_total, lines.tax_amount]
     params: { allowed_rates_pct: [0, 5, 6.25, 7.25, 8.25, 10, 20], rounding_tolerance: 0.01 }   # tax may differ from subtotal x rate by cent rounding
     explain: "Tax rate {{ rate }}% is not an allowed rate."

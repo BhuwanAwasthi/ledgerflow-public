@@ -774,6 +774,86 @@
         "title": "CaseOut",
         "type": "object"
       },
+      "CellEditOut": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "input": {
+            "enum": [
+              "money",
+              "number",
+              "date",
+              "text"
+            ],
+            "title": "Input",
+            "type": "string"
+          },
+          "op": {
+            "enum": [
+              "set_field",
+              "set_gl"
+            ],
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          }
+        },
+        "required": [
+          "op",
+          "field",
+          "path",
+          "input"
+        ],
+        "title": "CellEditOut",
+        "type": "object"
+      },
+      "CellFlagOut": {
+        "properties": {
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "low_confidence",
+              "rule"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "row": {
+            "title": "Row",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "row",
+          "column",
+          "kind",
+          "reasons"
+        ],
+        "title": "CellFlagOut",
+        "type": "object"
+      },
       "DashboardKpisOut": {
         "properties": {
           "cases": {
@@ -1068,6 +1148,41 @@
           "has_text_layer"
         ],
         "title": "DocumentOut",
+        "type": "object"
+      },
+      "DuplicateLinkOut": {
+        "properties": {
+          "case_id": {
+            "title": "Case Id",
+            "type": "integer"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "case_id",
+          "ref",
+          "explanation"
+        ],
+        "title": "DuplicateLinkOut",
         "type": "object"
       },
       "ExportBatchOut": {
@@ -1627,6 +1742,71 @@
           "created_at"
         ],
         "title": "POAmendmentOut",
+        "type": "object"
+      },
+      "POBalanceOut": {
+        "properties": {
+          "amended": {
+            "title": "Amended",
+            "type": "boolean"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "committed_by_others": {
+            "title": "Committed By Others",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "master_amount": {
+            "title": "Master Amount",
+            "type": "string"
+          },
+          "po_number": {
+            "title": "Po Number",
+            "type": "string"
+          },
+          "remaining_after": {
+            "title": "Remaining After",
+            "type": "string"
+          },
+          "remaining_before": {
+            "title": "Remaining Before",
+            "type": "string"
+          },
+          "this_invoice": {
+            "title": "This Invoice",
+            "type": "string"
+          },
+          "this_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "This State"
+          }
+        },
+        "required": [
+          "po_number",
+          "currency",
+          "master_amount",
+          "amount",
+          "amended",
+          "committed_by_others",
+          "this_invoice",
+          "remaining_before",
+          "remaining_after",
+          "this_state"
+        ],
+        "title": "POBalanceOut",
         "type": "object"
       },
       "POConsumptionOut": {
@@ -2237,6 +2417,34 @@
             "title": "Actor",
             "type": "string"
           },
+          "ops": {
+            "anyOf": [
+              {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "set_field": "#/components/schemas/SetFieldOp",
+                      "set_gl": "#/components/schemas/SetGLOp"
+                    },
+                    "propertyName": "op"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SetFieldOp"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SetGLOp"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ops"
+          },
           "text": {
             "anyOf": [
               {
@@ -2337,6 +2545,81 @@
           "evidence"
         ],
         "title": "RuleResultOut",
+        "type": "object"
+      },
+      "SetFieldOp": {
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "set_field",
+            "title": "Op",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "op",
+          "path",
+          "value"
+        ],
+        "title": "SetFieldOp",
+        "type": "object"
+      },
+      "SetGLOp": {
+        "additionalProperties": false,
+        "properties": {
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department"
+          },
+          "gl_code": {
+            "title": "Gl Code",
+            "type": "string"
+          },
+          "line_index": {
+            "title": "Line Index",
+            "type": "integer"
+          },
+          "op": {
+            "const": "set_gl",
+            "title": "Op",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "line_index",
+          "gl_code",
+          "department"
+        ],
+        "title": "SetGLOp",
         "type": "object"
       },
       "StageEventOut": {
@@ -2977,6 +3260,152 @@
           "created_at"
         ],
         "title": "VendorRequestOut",
+        "type": "object"
+      },
+      "WorkspaceColumnOut": {
+        "properties": {
+          "binds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Binds",
+            "type": "array"
+          },
+          "edit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CellEditOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "header": {
+            "title": "Header",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "header",
+          "required",
+          "binds",
+          "edit"
+        ],
+        "title": "WorkspaceColumnOut",
+        "type": "object"
+      },
+      "WorkspaceOut": {
+        "properties": {
+          "case_id": {
+            "title": "Case Id",
+            "type": "integer"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/CellFlagOut"
+            },
+            "title": "Cells",
+            "type": "array"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceColumnOut"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft"
+          },
+          "duplicates": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicateLinkOut"
+            },
+            "title": "Duplicates",
+            "type": "array"
+          },
+          "erp_profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erp Profile"
+          },
+          "grain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grain"
+          },
+          "invoice": {
+            "additionalProperties": true,
+            "title": "Invoice",
+            "type": "object"
+          },
+          "match": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match"
+          },
+          "po_balance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/POBalanceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewable": {
+            "title": "Reviewable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "case_id",
+          "erp_profile",
+          "grain",
+          "columns",
+          "cells",
+          "invoice",
+          "match",
+          "po_balance",
+          "draft",
+          "duplicates",
+          "reviewable"
+        ],
+        "title": "WorkspaceOut",
         "type": "object"
       }
     }
@@ -3678,6 +4107,49 @@
           }
         },
         "summary": "Download Template",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/cases/{case_id}/workspace": {
+      "get": {
+        "description": "Review workspace view: editable template columns, amber cells, PO match and balance, latest draft.",
+        "operationId": "workspace_api_cases__case_id__workspace_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workspace",
         "tags": [
           "cases"
         ]

@@ -29,6 +29,7 @@
     "openapi-fetch": "0.13.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "react-pdf": "9.1.1",
     "react-router-dom": "6.28.0",
     "recharts": "2.13.3",
     "sonner": "1.7.0",
