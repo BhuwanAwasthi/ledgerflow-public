@@ -18,10 +18,10 @@ llm:
   provider: azure_openai
   # deployment and endpoint come from env: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT
   api_path: auto            # auto | responses | chat  (auto = decided by startup probe)
-  pricing_per_1m_usd:       # fill in from your Azure price sheet; used for the cost meter only
-    input: 0.0
-    cached_input: 0.0
-    output: 0.0
+  pricing_per_1m_usd:
+    input: 1.75
+    cached_input: 0.175
+    output: 14.0
   default_reasoning_effort: low
   request_timeout_s: 120
 
