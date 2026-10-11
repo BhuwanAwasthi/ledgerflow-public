@@ -2,7 +2,7 @@
 BACKEND := uv --directory backend
 FRONTEND := $(wildcard frontend/package.json)
 
-.PHONY: setup dev test test-live lint check frontend-check fixtures seed
+.PHONY: setup dev test test-live lint check frontend-check fixtures seed smoke-deploy
 
 setup:
 	$(BACKEND) sync
@@ -35,5 +35,8 @@ check: lint test frontend-check
 fixtures:
 	$(BACKEND) run python -m scripts.generate_fixtures
 
-seed:
+seed:  # against Supabase (PowerShell): $env:DATABASE_URL="<session pooler URI>"; make seed
 	$(BACKEND) run python -m app.seed
+
+smoke-deploy:  # make smoke-deploy URL=https://ledgerflow-api.onrender.com
+	$(BACKEND) run python -m scripts.smoke_deploy $(URL) $(ARGS)

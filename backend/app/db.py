@@ -44,7 +44,10 @@ def make_engine(url: str) -> Engine:
     if url.startswith("sqlite"):
         kwargs["connect_args"] = {"check_same_thread": False}
     else:
-        kwargs["pool_pre_ping"] = True
+        # Supabase free pooler caps clients (~15) shared by Render and a laptop `make seed`; the orchestrator
+        # runs 2 jobs. prepare_threshold=None keeps psycopg working if the transaction pooler URL is pasted.
+        kwargs.update(pool_pre_ping=True, pool_size=3, max_overflow=4, pool_recycle=300,
+                      connect_args={"prepare_threshold": None})
     return create_engine(url, **kwargs)
 
 

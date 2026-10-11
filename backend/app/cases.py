@@ -19,6 +19,15 @@ class UploadedFile:
     mime: str | None
     data: bytes
 
+    def __post_init__(self) -> None:
+        # Postgres enforces documents.filename String(255) / mime String(128); SQLite would not catch it.
+        if len(self.filename) > 255:
+            stem, dot, ext = self.filename.rpartition(".")
+            ext = f".{ext}" if dot and len(ext) <= 10 else ""
+            self.filename = (stem if ext else self.filename)[: 255 - len(ext)] + ext
+        if self.mime and len(self.mime) > 128:
+            self.mime = None
+
 
 def _safe_name(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("._") or "file"

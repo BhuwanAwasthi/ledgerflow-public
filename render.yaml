@@ -1,17 +1,33 @@
-# Render Blueprint: free web service for the FastAPI backend.
+# Render Blueprint: free web service for the FastAPI backend. Steps: docs/DEPLOY.md.
 # Render dashboard -> New -> Blueprint -> pick this repo. Set the sync:false secrets in the dashboard.
+# No rootDir: the API reads ../config and ../data at runtime, so the whole repo must be on the instance.
 services:
   - type: web
     name: ledgerflow-api
     runtime: python
     plan: free
-    rootDir: backend
-    buildCommand: pip install uv && uv sync --frozen
-    startCommand: uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    region: singapore
+    buildCommand: pip install uv && uv --directory backend sync --frozen --no-dev
+    # --no-sync: `uv run` would otherwise install the dev group on every start
+    startCommand: uv --directory backend run --no-sync uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - backend/**
+        - config/**
+        - data/**
+        - render.yaml
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
+      # use Render's Python (PYTHON_VERSION) for backend/.venv; a uv-downloaded one lives outside the project
+      - key: UV_PYTHON_PREFERENCE
+        value: only-system
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: LLM_BACKEND
+        value: azure
       - key: STORAGE_BACKEND
         value: supabase
       - key: SUPABASE_BUCKET
@@ -22,13 +38,13 @@ services:
         sync: false
       - key: AZURE_OPENAI_DEPLOYMENT
         sync: false
-      - key: DATABASE_URL
+      - key: DATABASE_URL  # Supabase *session pooler* URI (port 5432, IPv4)
         sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_KEY
         sync: false
-      - key: CORS_ORIGINS
+      - key: CORS_ORIGINS  # comma-separated, e.g. https://ledgerflow.vercel.app
         sync: false
-      - key: PUBLIC_APP_URL
+      - key: PUBLIC_APP_URL  # the Vercel URL, used in portal links and mailto drafts
         sync: false
