@@ -227,6 +227,14 @@ class VendorActionOut(BaseModel):
     resumed_case_ids: list[int]
 
 
+class MasterImportOut(BaseModel):
+    entity: str
+    created: int
+    updated: int
+    unchanged: int
+    notes: list[str]
+
+
 class POLineOut(_ORM):
     id: int
     line_no: int
@@ -244,6 +252,17 @@ class POConsumptionOut(_ORM):
     amount: Decimal
     qty: Decimal | None
     state: str
+
+
+class POAmendmentOut(_ORM):
+    id: int
+    case_id: int | None
+    amended_by: str
+    old_amount: Decimal
+    new_amount: Decimal
+    reason: str | None
+    source: str
+    created_at: datetime
 
 
 class POOut(BaseModel):
@@ -265,6 +284,7 @@ class POOut(BaseModel):
 class PODetailOut(POOut):
     lines: list[POLineOut]
     consumption: list[POConsumptionOut]
+    amendments: list[POAmendmentOut]  # master-amount changes, oldest first
 
 
 class NotificationOut(_ORM):

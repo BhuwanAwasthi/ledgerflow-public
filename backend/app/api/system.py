@@ -15,7 +15,7 @@ router = APIRouter(tags=["system"])
 
 
 @router.get("/healthz", response_model=HealthOut)
-async def healthz(request: Request) -> HealthOut:
+def healthz(request: Request) -> HealthOut:
     state = request.app.state
     try:
         with state.session_factory() as s:
@@ -37,6 +37,6 @@ async def healthz(request: Request) -> HealthOut:
 
 
 @router.get("/api/config", tags=["config"])
-async def get_config(cfg: Annotated[ResolvedConfig, Depends(current_config)]) -> dict[str, Any]:
+def get_config(cfg: Annotated[ResolvedConfig, Depends(current_config)]) -> dict[str, Any]:
     """Resolved config (files + active Agent Studio overrides) and its hash."""
     return cfg.public_dict()

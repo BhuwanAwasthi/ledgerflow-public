@@ -32,7 +32,8 @@ stages:
     agent: classifier
     action: classify
     status_label: Classified
-    next: { has_invoice: extract, no_invoice: "end:unsupported", split: "end:split" }
+    # low_confidence = no confident invoice, but a probable one: read it; the document_classification rule sends it to review
+    next: { has_invoice: extract, low_confidence: extract, no_invoice: "end:unsupported", split: "end:split" }
 
   - id: extract
     agent: extraction

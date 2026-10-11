@@ -68,6 +68,7 @@ class ClassifierAgent(Agent):
         calls: list[dict[str, Any]] = []
         reasoning: list[str] = []
         confidences: list[float] = []
+        uncertain: list[tuple[Document, ClassifiedDocument]] = []  # below min_confidence, labelled `fallback`
         with ctx.session_factory() as s:
             docs = s.scalars(
                 select(Document)
@@ -96,22 +97,29 @@ class ClassifierAgent(Agent):
                         else f" (model said '{e.label}' at {e.confidence:.0%}; below {dt.min_confidence:.0%})"
                     )
                     if i == 0:
+                        target = doc
                         doc.label, doc.label_confidence = label, e.confidence
                         doc.page_from, doc.page_to = e.page_from, e.page_to
                     else:
-                        s.add(
-                            segment_of(
-                                doc,
-                                case_id=ctx.case_id,
-                                label=label,
-                                confidence=e.confidence,
-                                page_from=e.page_from,
-                                page_to=e.page_to,
-                            )
+                        target = segment_of(
+                            doc,
+                            case_id=ctx.case_id,
+                            label=label,
+                            confidence=e.confidence,
+                            page_from=e.page_from,
+                            page_to=e.page_to,
                         )
+                        s.add(target)
+                    if label != e.label and routes.get(e.label) == INVOICE_ROUTE:
+                        uncertain.append((target, e))
                     confidences.append(e.confidence)
                     reasoning.append(
                         f"{doc.filename} p{e.page_from}-{e.page_to}: {label} ({e.confidence:.0%}){note}. {e.reason}".strip()
+                    )
+                dropped = uncovered_pages(entries, doc.pages or 1)
+                if dropped:
+                    reasoning.append(
+                        f"{doc.filename}: page(s) {', '.join(dropped)} matched no document type and were left out."
                     )
             s.flush()
 
@@ -183,8 +191,42 @@ class ClassifierAgent(Agent):
                     metrics,
                     spawn=[c.id for c in children],
                 )
+            low = None
+            if not invoices and uncertain:
+                # A probable invoice below min_confidence: read it anyway and let the document_classification
+                # rule (severity review) put the case in front of a reviewer, instead of ending unsupported.
+                target, e = max(uncertain, key=lambda pair: pair[1].confidence)
+                target.label = e.label  # keep the model's label (and its low confidence) on this document
+                low = {
+                    "document_id": target.id,
+                    "filename": target.filename,
+                    "label": e.label,
+                    "confidence": e.confidence,
+                    "min_confidence": dt.min_confidence,
+                    "page_from": target.page_from,
+                    "page_to": target.page_to,
+                }
+                for item in summary:
+                    if item["document_id"] == target.id:
+                        item.update(label=e.label, route=routes[e.label])
             s.commit()
 
+        if low is not None:
+            return AgentResult(
+                "low_confidence",
+                {"documents": summary, "invoice_document_id": low["document_id"], "invoice_label": low["label"],
+                 "uncertain_invoice": low},
+                [
+                    *reasoning[:3],
+                    (
+                        f"No document is a confident invoice; reading {low['filename']} p{low['page_from']}-"
+                        f"{low['page_to']} ({low['label']} at {low['confidence']:.0%}, below "
+                        f"{low['min_confidence']:.0%}) and flagging it for review."
+                    ),
+                ],
+                confidence,
+                metrics,
+            )
         if not invoices:
             return AgentResult(
                 "no_invoice",
@@ -208,6 +250,20 @@ def label_schema(ctx: AgentContext) -> dict[str, Any]:
     schema = strict_json_schema(ClassifierOutput)
     schema["$defs"]["ClassifiedDocument"]["properties"]["label"]["enum"] = [lbl.id for lbl in ctx.config.document_types.labels]
     return schema
+
+
+def uncovered_pages(entries: list[ClassifiedDocument], pages: int) -> list[str]:
+    """Pages of the file no classified range covers, as compact ranges ('3', '5-7')."""
+    covered = {p for e in entries for p in range(e.page_from, e.page_to + 1)}
+    missing = [p for p in range(1, pages + 1) if p not in covered]
+    out: list[str] = []
+    for p in missing:
+        if out and p - 1 in missing:
+            lo = out[-1].split("-")[0]
+            out[-1] = f"{lo}-{p}"
+        else:
+            out.append(str(p))
+    return out
 
 
 def _clean(entries: list[ClassifiedDocument], pages: int) -> list[ClassifiedDocument]:

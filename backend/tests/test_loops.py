@@ -27,6 +27,7 @@ from app.llm_schemas import ChangeSet
 from app.models import (
     Case,
     Notification,
+    POAmendment,
     PurchaseOrder,
     ReviewActionRow,
     RuleResult,
@@ -159,7 +160,18 @@ async def test_s02b_remark_loop_end_to_end(pipeline: Pipeline):
     assert [(t.version, t.status) for t in final] == [(1, "draft"), (2, "final")]
     assert final[1].file_key and final[1].file_key.endswith("SI_APBILL_" + (c.ref or "") + "_v2.csv")
     bal = balance(pipeline, "PO-1001")
-    assert (bal["consumed"], bal["reserved"]) == (Decimal("10300.00"), Decimal("0.00"))  # S02a 6,000 + S02b 4,300
+    # the reviewer's amendment became the PO master amount on approval: S02a 6,000 + S02b 4,300 of 10,500
+    assert (bal["amount"], bal["consumed"], bal["reserved"], bal["remaining"]) == (
+        Decimal("10500.00"), Decimal("10300.00"), Decimal("0.00"), Decimal("200.00")
+    )
+    with pipeline.sf() as s:
+        po = s.scalars(select(PurchaseOrder).where(PurchaseOrder.po_number == "PO-1001")).one()
+        audit = s.scalars(select(POAmendment).where(POAmendment.po_id == po.id)).all()
+    assert [(a.case_id, a.amended_by, a.old_amount, a.new_amount, a.source) for a in audit] == [
+        (cid, "Rita (AP)", Decimal("10000.00"), Decimal("10500.00"), "remark")
+    ]
+    assert audit[0].reason
+    assert any("PO-1001 amount amended from 10,000.00 to 10,500.00" in r for r in events(pipeline, cid, "finalize")[-1].reasoning)
     with pipeline.sf() as s:
         notes = [n.text for n in s.scalars(select(Notification).where(Notification.case_id == cid)).all()]
     assert any("approved" in n for n in notes)

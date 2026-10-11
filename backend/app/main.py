@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections.abc import AsyncIterator
+from concurrent.futures import Future
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -36,7 +36,7 @@ def create_app(settings: Settings | None = None, *, script: StubScript | None = 
                 return resolved_config(settings.config_dir, s)
 
         cfg = config_provider()  # fail fast on an invalid config
-        probe: asyncio.Task[str] | None = None
+        probe: Future[str] | None = None
         app.state.settings = settings
         app.state.session_factory = session_factory
         app.state.config_hash = cfg.hash
@@ -53,15 +53,16 @@ def create_app(settings: Settings | None = None, *, script: StubScript | None = 
         app.state.orchestrator = orch
         await orch.start()
         if isinstance(app.state.llm, AzureLLM) and app.state.llm.path == "not_probed":
-            probe = asyncio.create_task(app.state.llm.probe())  # pick responses|chat once, in the background
+            # pick responses|chat once, in the background, on the loop that makes every LLM call
+            probe = orch.submit(app.state.llm.probe())
         resumed = await orch.resume_pending()
         logging.getLogger(__name__).info("startup: config %s, resumed %d case(s)", cfg.hash[:12], resumed)
         try:
             yield
         finally:
-            await orch.stop()
             if probe is not None:
                 probe.cancel()
+            await orch.stop()
             engine.dispose()
 
     app = FastAPI(title="LedgerFlow API", version="0.1.0", lifespan=lifespan)

@@ -7,6 +7,7 @@ writes the import file to storage and turns the case's PO reservation into consu
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
@@ -18,7 +19,8 @@ from app.case_state import effective
 from app.config_loader import ErpProfile, ResolvedConfig
 from app.exports.context import template_context
 from app.exports.render import diff_rows, make_env, render_rows, render_string, to_bytes
-from app.models import Case, ReviewActionRow, TemplateVersion, utcnow
+from app.models import Case, PurchaseOrder, ReviewActionRow, TemplateVersion, utcnow
+from app.rules.engine import fmt_money
 
 
 def profile_for(cfg: ResolvedConfig, params: dict[str, Any]) -> ErpProfile:
@@ -93,6 +95,40 @@ class TemplateAgent(Agent):
             reasoning.append("Every required column is filled.")
         return AgentResult("ok", {"template": _summary(tv, rendered.missing)}, reasoning, confidence=1.0)
 
+    @staticmethod
+    def _apply_po_amendments(s: Session, ctx: AgentContext, case: Case) -> list[str]:
+        """On approval a reviewer's set_po_amount_note becomes the PO's master amount, with an audit row
+        (amended_by, old/new amount, reason, case), like a verified bank change on vendor approval."""
+        amendments = (effective(ctx.state).get("reconciler") or {}).get("po_amendments") or {}
+        notes = [
+            r for r in s.scalars(
+                select(ReviewActionRow)
+                .where(ReviewActionRow.case_id == case.id, ReviewActionRow.action == "override")
+                .order_by(ReviewActionRow.id.desc())
+            ).all()
+            if (r.changeset or {}).get("op") == "set_po_amount_note"
+        ]
+        lines: list[str] = []
+        for po_number, amount in amendments.items():
+            po = s.scalars(select(PurchaseOrder).where(PurchaseOrder.po_number == po_number)).first()
+            if po is None:
+                continue
+            new_amount = Decimal(str(amount))
+            note = next((r for r in notes if Decimal(str(r.changeset["new_amount"])) == new_amount), None)
+            old = po.amount
+            row = po_ledger.amend(
+                s, po, new_amount,
+                amended_by=note.actor if note else (case.approved_by or "reviewer"),
+                reason=(note.changeset or {}).get("reason") if note else None,
+                case_id=case.id,
+            )
+            if row is not None:
+                lines.append(
+                    f"{po.po_number} amount amended from {fmt_money(old)} to {fmt_money(new_amount)} "
+                    f"(by {row.amended_by}, recorded in the PO audit log)."
+                )
+        return lines
+
     def _finalize(self, s: Session, ctx: AgentContext, case: Case, profile: ErpProfile) -> AgentResult:
         approval = s.scalars(
             select(ReviewActionRow)
@@ -126,12 +162,14 @@ class TemplateAgent(Agent):
         assert ctx.storage is not None, "template.finalize needs storage"
         tv.file_key = ctx.storage.put(f"exports/cases/{case.id}/{file_name(profile, case, tv.version)}", data, mime)
         po_ledger.consume(s, case.id)
+        amended = self._apply_po_amendments(s, ctx, case)
         s.commit()
         reasoning.append(
             f"Approved by {case.approved_by}; import file {file_name(profile, case, tv.version)} is ready."
         )
         if case.po_id:
             reasoning.append("The PO reservation is now consumed.")
+        reasoning += amended
         return AgentResult(
             "ok",
             {"template": _summary(tv, rendered.missing), "approved_by": case.approved_by},

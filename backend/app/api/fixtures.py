@@ -53,7 +53,7 @@ def _submitter(sc: Scenarios, scenario: ScenarioSpec) -> tuple[str, str]:
 
 
 @router.get("", response_model=list[FixtureOut])
-async def list_fixtures(settings: SettingsDep) -> list[dict[str, Any]]:
+def list_fixtures(settings: SettingsDep) -> list[dict[str, Any]]:
     sc = _scenarios(settings)
     fx = _fixture_dir(settings)
     return [
@@ -75,7 +75,7 @@ async def list_fixtures(settings: SettingsDep) -> list[dict[str, Any]]:
 
 
 @router.post("/{scenario_id}/run", response_model=CaseOut, status_code=201)
-async def run_fixture(
+def run_fixture(
     scenario_id: str,
     settings: SettingsDep,
     s: Annotated[Session, Depends(get_session)],
@@ -105,7 +105,7 @@ async def run_fixture(
 
 
 @router.get("/{scenario_id}/files/{filename}", response_class=FileResponse)
-async def fixture_file(scenario_id: str, filename: str, settings: SettingsDep) -> FileResponse:
+def fixture_file(scenario_id: str, filename: str, settings: SettingsDep) -> FileResponse:
     """Download a scenario's PDF or one of its supporting files (e.g. the S05 W-9 for the vendor portal)."""
     scenario = _scenario(_scenarios(settings), scenario_id)
     allowed = {scenario.file, *(f.file for f in scenario.supporting_files)}

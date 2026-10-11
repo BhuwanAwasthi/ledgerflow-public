@@ -21,6 +21,15 @@ rules:
     params: { fields: [invoice_number, invoice_date, total, vendor_name] }
     explain: "Missing {{ missing | join(', ') }}. We need these before the invoice can be processed."
 
+  - id: document_classification
+    name: Document recognised as an invoice
+    fail_label: "Unsure this is an invoice"
+    enabled: true
+    applies_to: all
+    severity: review
+    params: {}
+    explain: "The classifier was only {{ confidence }} sure {{ filename }} is an {{ label | replace('_', ' ') }} (threshold {{ min_confidence }}). Please confirm the document type and the extracted fields."
+
   - id: low_confidence_fields
     name: Extraction confidence
     fail_label: "Low extraction confidence"

@@ -97,6 +97,7 @@ def build_rule_context(s: Session, case: Case, state: dict[str, Any]) -> RuleCon
         created_at=case.created_at,
         overrides=dict(rec.get("rule_overrides") or {}),
         po_amendments={k: Decimal(str(a)) for k, a in (rec.get("po_amendments") or {}).items()},
+        uncertain_invoice=(state.get("classifier") or {}).get("uncertain_invoice"),
     )
 
 

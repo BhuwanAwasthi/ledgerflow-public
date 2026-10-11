@@ -16,6 +16,7 @@ When the spec and the code disagree, follow the spec. When the spec is silent, c
 - `make fixtures`: regenerate data/master/*.csv and data/fixtures/*.pdf from data/scenarios.yaml
 - `make seed`: reset the DB and load master data (+ seeded history if enabled)
 - `uv run python backend/scripts/smoke_azure.py`: verify the Azure deployment (text, image, strict JSON)
+- Shell is **Windows PowerShell 5.1**: chain commands with `;` or run them separately, never `&&` (a parser error in PS 5.1), and quote every path with spaces (the repo lives under `D:\DESKTOP EXTRACTION\...`).
 
 Dev machine is **Windows 11 + PowerShell 5.1** (GNU make from ezwinports, Git for Windows, Node 24, uv). The Makefile must run here and on Linux (Render): keep recipes to plain `uv`/`npm` invocations, no bash-only syntax (`&&` chains inside one recipe line are fine for make, but avoid `$(shell ...)` pipelines, `rm -rf`, `cp`); use `uv run python -c` or small Python scripts for file operations. `make dev` must start both servers without relying on `&` backgrounding (use a Python launcher script or `npx concurrently`).
 

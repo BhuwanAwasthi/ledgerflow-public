@@ -10,12 +10,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app import po_ledger
 from app.agents.base import AgentContext
-from app.agents.decision import DecisionAgent
+from app.agents.decision import DecisionAgent, contradicts, lead_sentence
 from app.config_loader import build_config, read_config_files
 from app.llm import FakeLLM
-from app.models import Case, POConsumption, POLine, PurchaseOrder, RuleResult
+from app.models import Case, POConsumption, POLine, PurchaseOrder, RuleResult, StageEvent
 from app.seed import load_master
-from tests.conftest import CONFIG_DIR, LLM_FIXTURES, MASTER_DIR
+from tests.conftest import CONFIG_DIR, LLM_FIXTURES, MASTER_DIR, Pipeline
 
 CFG = build_config(read_config_files(CONFIG_DIR))
 
@@ -90,3 +90,37 @@ async def test_on_hold_releases_an_earlier_reservation(session_factory: sessionm
         po = s.get(PurchaseOrder, po_id)
         assert po is not None
         assert states == ["released"] and po_ledger.balance(s, po)["remaining"] == Decimal("10000.00")
+
+
+async def test_s04_twice_summary_never_contradicts_the_decision(pipeline: Pipeline):
+    """The first S04 is new (not a reject) while FakeLLM's only S04 explanation says "Rejected: duplicate";
+    the second S04 is a duplicate of the first and is rejected. Both summaries lead with the code-built
+    sentence for their own decision."""
+    await pipeline.start()
+    first = await pipeline.run_fixture("S04_acme_scan_duplicate.pdf")
+    second = await pipeline.run_fixture("S04_acme_scan_duplicate.pdf")
+    params = CFG.agents["decision"].params
+
+    seen = {}
+    for cid in (first, second):
+        with pipeline.sf() as s:
+            c = s.get(Case, cid)
+            assert c is not None and c.decision and c.decision_summary
+            evs = s.scalars(select(StageEvent).where(StageEvent.case_id == cid, StageEvent.status == "completed")).all()
+        decide = [e for e in evs if e.stage_id == "decide"][-1]
+        results = [e for e in evs if e.stage_id == "policy"][-1].output["results"]
+        expl = decide.output["explanation"]
+        lead = lead_sentence(params["decision_labels"][c.decision], results, decide.output["gate_failures"], CFG.rules)
+        assert expl["lead"] == lead
+        assert c.decision_summary == lead or c.decision_summary.startswith(lead + " ")
+        assert contradicts(c.decision_summary, c.decision, params["decision_terms"]) is None
+        seen[cid] = (c.decision, c.decision_summary, expl["source"])
+
+    decision, summary, source = seen[first]
+    assert decision != "reject"
+    assert "rejected" not in summary.lower() and "duplicate" not in summary.lower()
+    assert source == "rules"  # the model's "Rejected: ..." text was discarded
+    decision, summary, source = seen[second]
+    assert decision == "reject"
+    assert summary.startswith("Rejected: Duplicate invoice")
+    assert source == "llm" and summary.count("Rejected") == 1  # the model's restated "Rejected:" was dropped

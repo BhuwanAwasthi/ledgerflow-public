@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -76,22 +77,26 @@ async def create(
         if len(data) > max_bytes:
             raise HTTPException(413, f"{f.filename} is larger than {cfg.app.limits.max_upload_mb:g} MB")
         uploads.append(UploadedFile(f.filename or "upload", f.content_type, data))
-    case = create_case(
-        s,
-        cfg,
-        storage,
-        uploads,
-        submitter_name=submitter_name,
-        submitter_email=submitter_email,
-        note=note,
-        source="upload",
-    )
-    orch.enqueue(case.id)
-    return case_out(s, orch, case)
+
+    def persist() -> dict[str, Any]:  # DB + storage writes off the event loop
+        case = create_case(
+            s,
+            cfg,
+            storage,
+            uploads,
+            submitter_name=submitter_name,
+            submitter_email=submitter_email,
+            note=note,
+            source="upload",
+        )
+        orch.enqueue(case.id)
+        return case_out(s, orch, case)
+
+    return await run_in_threadpool(persist)
 
 
 @router.get("", response_model=CaseListOut)
-async def list_cases(
+def list_cases(
     s: SessionDep,
     orch: OrchDep,
     status: str | None = None,
@@ -125,7 +130,7 @@ async def list_cases(
 
 
 @router.get("/{case_id}", response_model=CaseDetailOut)
-async def get_case(case_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
+def get_case(case_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     case = _load_case(s, case_id)
     out = case_out(s, orch, case)
     last_rule_run = s.scalar(select(func.max(RuleResult.run_no)).where(RuleResult.case_id == case_id))
@@ -166,27 +171,35 @@ async def stream_events(
     manual reconnect), then streams live `stage_event`, `case_updated` and `progress` events.
     `follow=false` closes after the replay."""
     orch: Orchestrator = request.app.state.orchestrator
-    with request.app.state.session_factory() as s:
-        _load_case(s, case_id)
+    sf = request.app.state.session_factory
+
+    def check() -> None:
+        with sf() as s:
+            _load_case(s, case_id)
+
+    await run_in_threadpool(check)
     if last_event_id and last_event_id.isdigit():
         after = int(last_event_id)
     after = max(after or 0, 0)
+
+    def replay() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        with sf() as s:
+            history = s.scalars(
+                select(StageEvent)
+                .where(StageEvent.case_id == case_id, StageEvent.seq > after)
+                .order_by(StageEvent.seq)
+            ).all()
+            return [event_to_dict(ev) for ev in history], case_summary(_load_case(s, case_id))
 
     async def gen() -> AsyncIterator[dict[str, str]]:
         last_seq = after
         queue = orch.bus.subscribe(case_id)  # before reading history so nothing is missed
         try:
-            with request.app.state.session_factory() as s:
-                history = s.scalars(
-                    select(StageEvent)
-                    .where(StageEvent.case_id == case_id, StageEvent.seq > after)
-                    .order_by(StageEvent.seq)
-                ).all()
-                case = _load_case(s, case_id)
-                for ev in history:
-                    last_seq = ev.seq
-                    yield {"event": "stage_event", "id": str(ev.seq), "data": dumps(event_to_dict(ev))}
-                yield {"event": "case_updated", "data": dumps(case_summary(case))}
+            history, summary = await run_in_threadpool(replay)  # never a DB call on the SSE loop
+            for ev in history:
+                last_seq = ev["seq"]
+                yield {"event": "stage_event", "id": str(ev["seq"]), "data": dumps(ev)}
+            yield {"event": "case_updated", "data": dumps(summary)}
             if not follow:
                 return
             while True:
@@ -207,13 +220,17 @@ async def stream_events(
 
 @router.post("/{case_id}/review", response_model=CaseOut)
 async def review(case_id: int, body: ReviewIn, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
-    _load_case(s, case_id)
+    await run_in_threadpool(_load_case, s, case_id)
     if body.action in ("remark", "reject") and not (body.text or "").strip():
         raise HTTPException(422, f"`text` is required for {body.action}")
     try:
         await orch.submit_review(case_id, body.action, body.text, body.actor)
     except OrchestratorError as e:
         raise HTTPException(409, str(e)) from e
+    return await run_in_threadpool(_reloaded, s, orch, case_id)
+
+
+def _reloaded(s: Session, orch: Orchestrator, case_id: int) -> dict[str, Any]:
     s.expire_all()
     return case_out(s, orch, _load_case(s, case_id))
 
@@ -221,17 +238,16 @@ async def review(case_id: int, body: ReviewIn, s: SessionDep, orch: OrchDep) -> 
 @router.post("/{case_id}/rerun", response_model=CaseOut)
 async def rerun(case_id: int, body: RerunIn, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     """Admin: start a new run of a failed or paused case at `from_stage` (the live view's Retry button)."""
-    _load_case(s, case_id)
+    await run_in_threadpool(_load_case, s, case_id)
     try:
         await orch.rerun(case_id, body.from_stage)
     except OrchestratorError as e:
         raise HTTPException(409, str(e)) from e
-    s.expire_all()
-    return case_out(s, orch, _load_case(s, case_id))
+    return await run_in_threadpool(_reloaded, s, orch, case_id)
 
 
 @router.get("/{case_id}/journey", response_model=JourneyOut)
-async def journey(case_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
+def journey(case_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     """Courier-style tracker for the submitter (steps from app.yaml `ui.journey`)."""
     case = _load_case(s, case_id)
     events = s.scalars(select(StageEvent).where(StageEvent.case_id == case_id).order_by(StageEvent.seq)).all()
@@ -244,7 +260,7 @@ def _download(data: bytes, mime: str, filename: str, inline: bool = False) -> Re
 
 
 @router.get("/{case_id}/template/{version}/download")
-async def download_template(case_id: int, version: int, s: SessionDep, orch: OrchDep) -> Response:
+def download_template(case_id: int, version: int, s: SessionDep, orch: OrchDep) -> Response:
     """One template version as the ERP profile's file (csv | xlsx)."""
     case = _load_case(s, case_id)
     cfg = orch.case_config(s, case)
@@ -261,7 +277,7 @@ async def download_template(case_id: int, version: int, s: SessionDep, orch: Orc
 
 
 @router.get("/{case_id}/audit-pack")
-async def audit_pack(case_id: int, s: SessionDep, orch: OrchDep) -> Response:
+def audit_pack(case_id: int, s: SessionDep, orch: OrchDep) -> Response:
     case = _load_case(s, case_id)
     data = build_audit_pack(s, case, orch.case_config(s, case).app.app.name)
     return _download(data, "application/pdf", f"AUDIT_{case.ref}.pdf")
@@ -275,7 +291,7 @@ def _document(s: Session, case_id: int, doc_id: int) -> Document:
 
 
 @router.get("/{case_id}/documents/{doc_id}/file")
-async def document_file(
+def document_file(
     case_id: int, doc_id: int, s: SessionDep, storage: Annotated[Storage, Depends(get_storage)]
 ) -> Response:
     doc = _document(s, case_id, doc_id)
@@ -283,7 +299,7 @@ async def document_file(
 
 
 @router.get("/{case_id}/documents/{doc_id}/pages/{page}.png")
-async def document_page(
+def document_page(
     case_id: int, doc_id: int, page: int, s: SessionDep, storage: Annotated[Storage, Depends(get_storage)]
 ) -> Response:
     doc = _document(s, case_id, doc_id)

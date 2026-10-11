@@ -22,7 +22,7 @@ OrchDep = Annotated[Orchestrator, Depends(get_orchestrator)]
 
 
 @router.get("/{token}", response_model=PortalOut)
-async def portal(token: str, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
+def portal(token: str, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     try:
         req = get_request(s, token)
     except PortalError as e:
@@ -41,6 +41,7 @@ async def upload(
 ) -> dict[str, Any]:
     uploads = [UploadedFile(f.filename or "upload", f.content_type, await f.read()) for f in files]
     try:
-        return await vendor_docs_received(s, orch, storage, token, uploads)
+        # classification (DB + LLM) runs on the orchestrator loop, not the API loop
+        return await orch.call(vendor_docs_received(s, orch, storage, token, uploads))
     except PortalError as e:
         raise HTTPException(e.status, str(e)) from e

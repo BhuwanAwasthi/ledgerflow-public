@@ -6,7 +6,7 @@ enabled: true
 handler: app.agents.classifier:ClassifierAgent
 actions:
   classify:
-    outcomes: [has_invoice, no_invoice, split]   # split = bundle of several invoices -> one child case each
+    outcomes: [has_invoice, low_confidence, no_invoice, split]   # split = bundle -> one child case per invoice; low_confidence = a probable invoice below document_types min_confidence
     prompt: prompts/classifier.md
 model:
   reasoning_effort: low

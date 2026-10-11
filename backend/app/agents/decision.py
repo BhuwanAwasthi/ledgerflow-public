@@ -4,8 +4,10 @@ Code: decision = the highest severity among failed rules (rules.yaml decision_pr
 outcome by params.severity_outcomes. With no failures, auto-approve only if every auto_approve_gate passes.
 Before reserving PO balance the po_balance rule is re-checked against the ledger as it is *now*, so two
 split invoices decided back to back can't both pass on the same remaining amount.
-LLM (effort low): a 2-4 sentence explanation written from the rule results only. It cannot change the
-decision; if the call fails, the rule explanations are used instead.
+Summary: the first sentence (decision + top reason) is built here from the rule results. The LLM (effort low)
+only writes the detail after it, from the rule results. Detail that names a different decision
+(params.decision_terms) is discarded, and so is a failed call: the rule explanations are used instead. So the
+summary can never contradict the decision.
 """
 
 from __future__ import annotations
@@ -21,10 +23,42 @@ from app.agents.base import Agent, AgentContext, AgentResult
 from app.agents.po_matching import llm_context
 from app.agents.policy import build_rule_context
 from app.case_state import effective
+from app.config_loader import RulesConfig
 from app.llm import LLMError, sum_metrics, text_part
 from app.llm_schemas import DecisionExplanation
 from app.models import Case, RuleResult
 from app.rules.engine import GateInput, dec, decide, evaluate_rule, fmt_money
+
+
+def lead_sentence(label: str, results: list[dict[str, Any]], gate_failures: list[str], rules_cfg: RulesConfig) -> str:
+    """Decision + its top reason, from the final rule results: the highest-precedence failed rule (rules.yaml
+    order breaks ties), else the first failed auto-approve gate, else "every check passed"."""
+    failed = [r for r in results if r["status"] == "fail"]
+    if failed:
+        rank = {sev: i for i, sev in enumerate(rules_cfg.decision_precedence)}
+        top = min(failed, key=lambda r: rank.get(r["severity"], len(rank)))
+        names = {r.id: r.fail_label or r.name for r in rules_cfg.rules}
+        more = len(failed) - 1
+        extra = f" (and {more} other failed check{'s' if more > 1 else ''})" if more else ""
+        return f"{label}: {names.get(top['rule_id'], top['name'])}{extra}."
+    if gate_failures:
+        return f"{label}: {gate_failures[0]}"
+    return f"{label}: every check passed."
+
+
+def contradicts(text: str, outcome: str, terms: dict[str, list[str]]) -> str | None:
+    """The first phrase in `text` that states a decision other than `outcome`, if any."""
+    low = text.lower()
+    return next((t for o, ts in terms.items() if o != outcome for t in ts if t.lower() in low), None)
+
+
+def _drop_restated_decision(text: str, label: str) -> str:
+    """'Rejected: this invoice...' after the lead 'Rejected: ...' -> 'This invoice...'."""
+    text = text.strip()
+    if text.lower().startswith(label.lower()):
+        rest = text[len(label) :].lstrip(" :.,-")
+        return rest[:1].upper() + rest[1:]
+    return text
 
 
 class DecisionAgent(Agent):
@@ -124,13 +158,17 @@ class DecisionAgent(Agent):
             case.decision = outcome
             s.commit()
 
-        explanation, metrics, note = await self._explain(ctx, outcome, inv, results, calc.gate_failures)
+        label = p["decision_labels"].get(outcome, outcome)
+        lead = lead_sentence(label, results, calc.gate_failures, rules_cfg)
+        explanation, metrics, note = await self._explain(ctx, outcome, label, lead, inv, results, calc.gate_failures)
         if note:
             reasoning.append(note)
         with ctx.session_factory() as s:
             case = s.get(Case, ctx.case_id)
             assert case is not None
-            case.decision_summary = f"{explanation['summary']} {explanation['next_step']}".strip()
+            case.decision_summary = " ".join(
+                part for part in (lead, explanation["summary"], explanation["next_step"]) if part
+            )
             s.commit()
 
         return AgentResult(
@@ -152,16 +190,26 @@ class DecisionAgent(Agent):
         self,
         ctx: AgentContext,
         outcome: str,
+        label: str,
+        lead: str,
         inv: dict[str, Any],
         results: list[dict[str, Any]],
         gate_failures: list[str],
     ) -> tuple[dict[str, str], dict[str, Any], str | None]:
-        """LLM explanation from the rule results only; a deterministic fallback when the call fails."""
+        """The detail after the code-built lead sentence: LLM text from the rule results only, or the rule
+        explanations when the call fails or the text names another decision."""
         order = {"fail": 0, "warn": 1, "pass": 2}
         ranked = sorted(results, key=lambda r: order.get(r["status"], 3))
         payload = [
             {k: r[k] for k in ("name", "status", "severity", "explanation")} for r in ranked
         ] + [{"name": "Auto-approve gate", "status": "fail", "severity": "review", "explanation": g} for g in gate_failures]
+        # the lead already carries the first gate failure
+        from_rules = {
+            "lead": lead,
+            "summary": " ".join(([r["explanation"] for r in ranked if r["status"] == "fail"] + gate_failures[1:])[:2]),
+            "next_step": "",
+            "source": "rules",
+        }
         with ctx.session_factory() as s:
             context = {**llm_context(ctx, s), "decision": outcome}
         try:
@@ -172,6 +220,7 @@ class DecisionAgent(Agent):
                 [text_part("Write the explanation now.")],
                 prompt_vars={
                     "decision": outcome,
+                    "lead": lead,
                     "vendor_name": inv.get("vendor_name") or "Unknown vendor",
                     "invoice_number": inv.get("invoice_number") or "(no number)",
                     "currency": inv.get("currency") or "",
@@ -182,12 +231,13 @@ class DecisionAgent(Agent):
                 context=context,
             )
         except (LLMError, RuntimeError) as e:
-            failed = [r["explanation"] for r in ranked if r["status"] == "fail"] + gate_failures
-            summary = " ".join(failed[:2]) or "Every check passed."
-            return (
-                {"summary": f"{outcome.replace('_', ' ').capitalize()}: {summary}", "next_step": ""},
-                {},
-                f"Explanation written from the rule results (LLM unavailable: {e}).",
-            )
+            return from_rules, {}, f"Explanation written from the rule results (LLM unavailable: {e})."
         assert isinstance(out, DecisionExplanation)
-        return {"summary": out.summary, "next_step": out.next_step}, sum_metrics([call]), None
+        detail = _drop_restated_decision(out.summary, label)
+        clash = contradicts(f"{detail} {out.next_step}", outcome, ctx.params["decision_terms"])
+        if clash:
+            return from_rules, sum_metrics([call]), (
+                f"The model's explanation said '{clash}', which is not the decision ({outcome}); "
+                "used the rule explanations instead."
+            )
+        return {"lead": lead, "summary": detail, "next_step": out.next_step, "source": "llm"}, sum_metrics([call]), None

@@ -1,11 +1,13 @@
-"""Master data and admin: vendors (approve / reject after the portal upload), POs with consumption,
-in-app notifications."""
+"""Master data and admin: vendors (approve / reject after the portal upload), POs with consumption and
+amendments, vendor / PO CSV export and import, in-app notifications."""
 
 from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,6 +15,7 @@ from app import po_ledger
 from app.api.cases import case_out
 from app.api.deps import get_orchestrator, get_session
 from app.api.schemas import (
+    MasterImportOut,
     NotificationOut,
     PODetailOut,
     POOut,
@@ -21,10 +24,12 @@ from app.api.schemas import (
     VendorDetailOut,
     VendorOut,
 )
+from app.master_csv import Entity, MasterCSVError, export_csv, import_csv
 from app.models import (
     Case,
     CaseStatus,
     Notification,
+    POAmendment,
     POConsumption,
     POLine,
     PurchaseOrder,
@@ -43,7 +48,7 @@ OPEN = (CaseStatus.received, CaseStatus.processing, CaseStatus.needs_review, Cas
 
 
 @router.get("/api/vendors", response_model=list[VendorOut])
-async def list_vendors(s: SessionDep, status: str | None = None) -> list[Vendor]:
+def list_vendors(s: SessionDep, status: str | None = None) -> list[Vendor]:
     stmt = select(Vendor).order_by(Vendor.code)
     if status:
         stmt = stmt.where(Vendor.status.in_(status.split(",")))
@@ -51,7 +56,7 @@ async def list_vendors(s: SessionDep, status: str | None = None) -> list[Vendor]
 
 
 @router.get("/api/vendors/{vendor_id}", response_model=VendorDetailOut)
-async def get_vendor(vendor_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
+def get_vendor(vendor_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     v = s.get(Vendor, vendor_id)
     if v is None:
         raise HTTPException(404, f"vendor {vendor_id} not found")
@@ -66,13 +71,13 @@ async def get_vendor(vendor_id: int, s: SessionDep, orch: OrchDep) -> dict[str, 
 @router.post("/api/vendors/{vendor_id}/approve", response_model=VendorActionOut)
 async def approve(vendor_id: int, body: VendorActionIn, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     try:
-        return await approve_vendor(s, orch, vendor_id, body.actor)
+        return await orch.call(approve_vendor(s, orch, vendor_id, body.actor))  # DB work off the API loop
     except PortalError as e:
         raise HTTPException(e.status, str(e)) from e
 
 
 @router.post("/api/vendors/{vendor_id}/reject", response_model=VendorActionOut)
-async def reject(vendor_id: int, body: VendorActionIn, s: SessionDep) -> dict[str, Any]:
+def reject(vendor_id: int, body: VendorActionIn, s: SessionDep) -> dict[str, Any]:
     try:
         return reject_vendor(s, vendor_id, body.actor, body.reason)
     except PortalError as e:
@@ -91,7 +96,7 @@ def _po_out(s: Session, po: PurchaseOrder) -> dict[str, Any]:
 
 
 @router.get("/api/pos", response_model=list[POOut])
-async def list_pos(s: SessionDep, vendor: int | None = None) -> list[dict[str, Any]]:
+def list_pos(s: SessionDep, vendor: int | None = None) -> list[dict[str, Any]]:
     stmt = select(PurchaseOrder).order_by(PurchaseOrder.po_number)
     if vendor is not None:
         stmt = stmt.where(PurchaseOrder.vendor_id == vendor)
@@ -99,18 +104,56 @@ async def list_pos(s: SessionDep, vendor: int | None = None) -> list[dict[str, A
 
 
 @router.get("/api/pos/{po_id}", response_model=PODetailOut)
-async def get_po(po_id: int, s: SessionDep) -> dict[str, Any]:
+def get_po(po_id: int, s: SessionDep) -> dict[str, Any]:
     po = s.get(PurchaseOrder, po_id)
     if po is None:
         raise HTTPException(404, f"PO {po_id} not found")
     out = _po_out(s, po)
     out["lines"] = s.scalars(select(POLine).where(POLine.po_id == po.id).order_by(POLine.line_no)).all()
     out["consumption"] = s.scalars(select(POConsumption).where(POConsumption.po_id == po.id).order_by(POConsumption.id)).all()
+    out["amendments"] = s.scalars(select(POAmendment).where(POAmendment.po_id == po.id).order_by(POAmendment.id)).all()
     return out
 
 
+@router.get("/api/master/{entity}.csv")
+def export_master(entity: Entity, s: SessionDep) -> Response:
+    """Vendors, purchase orders or PO lines in the data/master CSV format (re-importable)."""
+    return Response(
+        export_csv(s, entity), media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{entity}.csv"'},
+    )
+
+
+@router.post("/api/master/{entity}/import", response_model=MasterImportOut)
+async def import_master(
+    entity: Entity,
+    s: SessionDep,
+    file: Annotated[UploadFile, File(description="CSV in the export's format (header row required)")],
+    actor: Annotated[str, Form()] = "admin",
+) -> dict[str, Any]:
+    """Upsert from CSV, all or nothing: any invalid row rejects the file (422 with every row error). Import
+    vendors, then purchase orders, then PO lines. A changed PO amount is logged as a PO amendment."""
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as e:
+        raise HTTPException(422, {"errors": ["the file is not UTF-8 text"]}) from e
+
+    def work() -> dict[str, Any]:
+        try:
+            rep = import_csv(s, entity, text, actor)
+        except MasterCSVError as e:
+            s.rollback()
+            raise HTTPException(422, {"errors": e.errors}) from e
+        s.commit()
+        return {"entity": rep.entity, "created": rep.created, "updated": rep.updated,
+                "unchanged": rep.unchanged, "notes": rep.notes}
+
+    return await run_in_threadpool(work)
+
+
 @router.get("/api/notifications", response_model=list[NotificationOut])
-async def notifications(s: SessionDep, audience: str | None = None, case_id: int | None = None, limit: int = 50) -> list[Notification]:
+def notifications(s: SessionDep, audience: str | None = None, case_id: int | None = None, limit: int = 50) -> list[Notification]:
     stmt = select(Notification).order_by(Notification.id.desc()).limit(min(max(limit, 1), 200))
     if audience:
         stmt = stmt.where(Notification.audience == audience)
@@ -120,7 +163,7 @@ async def notifications(s: SessionDep, audience: str | None = None, case_id: int
 
 
 @router.post("/api/notifications/{notification_id}/read", response_model=NotificationOut)
-async def mark_read(notification_id: int, s: SessionDep) -> Notification:
+def mark_read(notification_id: int, s: SessionDep) -> Notification:
     n = s.get(Notification, notification_id)
     if n is None:
         raise HTTPException(404, f"notification {notification_id} not found")

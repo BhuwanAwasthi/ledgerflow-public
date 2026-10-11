@@ -341,6 +341,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/master/{entity}.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Master
+         * @description Vendors, purchase orders or PO lines in the data/master CSV format (re-importable).
+         */
+        get: operations["export_master_api_master__entity__csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/master/{entity}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Master
+         * @description Upsert from CSV, all or nothing: any invalid row rejects the file (422 with every row error). Import
+         *     vendors, then purchase orders, then PO lines. A changed PO amount is logged as a PO amendment.
+         */
+        post: operations["import_master_api_master__entity__import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notifications": {
         parameters: {
             query?: never;
@@ -545,6 +586,19 @@ export interface components {
             submitter_email?: string | null;
             /** Submitter Name */
             submitter_name?: string | null;
+        };
+        /** Body_import_master_api_master__entity__import_post */
+        Body_import_master_api_master__entity__import_post: {
+            /**
+             * Actor
+             * @default admin
+             */
+            actor: string;
+            /**
+             * File
+             * @description CSV in the export's format (header row required)
+             */
+            file: string;
         };
         /** Body_upload_portal__token__upload_post */
         Body_upload_portal__token__upload_post: {
@@ -939,6 +993,19 @@ export interface components {
              */
             state: "done" | "current" | "waiting" | "failed" | "skipped" | "pending";
         };
+        /** MasterImportOut */
+        MasterImportOut: {
+            /** Created */
+            created: number;
+            /** Entity */
+            entity: string;
+            /** Notes */
+            notes: string[];
+            /** Unchanged */
+            unchanged: number;
+            /** Updated */
+            updated: number;
+        };
         /** NotificationOut */
         NotificationOut: {
             /** Audience */
@@ -957,6 +1024,28 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** POAmendmentOut */
+        POAmendmentOut: {
+            /** Amended By */
+            amended_by: string;
+            /** Case Id */
+            case_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** New Amount */
+            new_amount: string;
+            /** Old Amount */
+            old_amount: string;
+            /** Reason */
+            reason: string | null;
+            /** Source */
+            source: string;
+        };
         /** POConsumptionOut */
         POConsumptionOut: {
             /** Amount */
@@ -974,6 +1063,8 @@ export interface components {
         };
         /** PODetailOut */
         PODetailOut: {
+            /** Amendments */
+            amendments: components["schemas"]["POAmendmentOut"][];
             /** Amount */
             amount: string;
             /** Approved By */
@@ -2011,6 +2102,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CaseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_master_api_master__entity__csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity: "vendors" | "purchase_orders" | "po_lines";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_master_api_master__entity__import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity: "vendors" | "purchase_orders" | "po_lines";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_master_api_master__entity__import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MasterImportOut"];
                 };
             };
             /** @description Validation Error */

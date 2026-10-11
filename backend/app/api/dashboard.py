@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
 @router.get("/metrics", response_model=DashboardOut)
-async def dashboard_metrics(
+def dashboard_metrics(
     s: Annotated[Session, Depends(get_session)],
     orch: Annotated[Orchestrator, Depends(get_orchestrator)],
     cfg: Annotated[ResolvedConfig, Depends(current_config)],

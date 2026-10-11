@@ -5,6 +5,12 @@ Invoice: {{ vendor_name }}, {{ invoice_number }}, {{ currency }} {{ total }}
 Rule results (failed and warned first):
 {{ rule_results_json }}
 
-Write {{ max_sentences }} sentences or fewer. Lead with the decision and the single most important reason, with its number. Mention what happens next (for example "Approve to release the template" or "We have asked the vendor for a bank letter"). Plain words, no jargon like "rule_id". Do not mention rules that passed unless the decision is auto_approve, where you say briefly what was verified.
+The system has already written the first sentence, and it is shown before yours:
+"{{ lead }}"
+
+Write only what comes after it. Do not restate the decision and never name a different decision.
+- summary: {{ max_sentences - 1 }} sentences or fewer with the detail behind that reason: the numbers, the documents or records involved, and any other failed checks.
+- next_step: one sentence on what happens next (for example "Approve to release the template" or "We have asked the vendor for a bank letter").
+Plain words, no jargon like "rule_id". Do not mention rules that passed unless the decision is auto_approve, where you say briefly what was verified.
 
 Return JSON: {"summary": "...", "next_step": "..."}

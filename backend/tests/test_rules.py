@@ -242,6 +242,9 @@ def test_explain_templates_use_only_evidence_keys(cfg: ResolvedConfig):
     other = OtherCase(7, "INV-2026-0007", "INV1", D("1082.50"), date(2026, 10, 2), datetime(2026, 10, 1, tzinfo=UTC))
     failing = {
         "required_fields": ctx(invoice=invoice(total=None)),
+        "document_classification": ctx(
+            uncertain_invoice={"filename": "a.pdf", "label": "invoice", "confidence": 0.5, "min_confidence": 0.7}
+        ),
         "low_confidence_fields": ctx(field_confidence={"total": 0.1}),
         "arithmetic": ctx(invoice=invoice(total="1.00")),
         "duplicate_exact": ctx(other_cases=[other]),

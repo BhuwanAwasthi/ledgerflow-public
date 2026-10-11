@@ -87,6 +87,7 @@ class RuleContext:
     created_at: datetime | None = None
     overrides: dict[str, str] = field(default_factory=dict)  # rule_id -> reviewer reason
     po_amendments: dict[str, Decimal] = field(default_factory=dict)  # po_number -> amended amount
+    uncertain_invoice: dict[str, Any] | None = None  # classifier: the invoice was read below min_confidence
 
     @property
     def po_reference(self) -> str | None:
@@ -163,6 +164,21 @@ def _p(params: dict[str, Any], key: str) -> Decimal:
 def required_fields(params: dict[str, Any], rc: RuleContext) -> Check | None:
     missing = [f for f in params["fields"] if rc.invoice.get(f) in (None, "")]
     return Check(bool(missing), {"missing": missing})
+
+
+def document_classification(params: dict[str, Any], rc: RuleContext) -> Check | None:
+    u = rc.uncertain_invoice
+    if u is None:
+        return Check(False)
+    return Check(
+        True,
+        {
+            "filename": u.get("filename"),
+            "label": u.get("label"),
+            "confidence": f"{float(u.get('confidence') or 0):.0%}",
+            "min_confidence": f"{float(u.get('min_confidence') or 0):.0%}",
+        },
+    )
 
 
 def low_confidence_fields(params: dict[str, Any], rc: RuleContext) -> Check | None:
@@ -423,6 +439,7 @@ RULES: dict[str, RuleFn] = {
     fn.__name__: fn
     for fn in (
         required_fields,
+        document_classification,
         low_confidence_fields,
         arithmetic,
         duplicate_exact,

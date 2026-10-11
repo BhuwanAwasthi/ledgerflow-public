@@ -13,7 +13,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import POConsumption, PurchaseOrder
+from app.models import POAmendment, POConsumption, PurchaseOrder
 
 ACTIVE = ("reserved", "consumed")
 
@@ -84,6 +84,28 @@ def consume(s: Session, case_id: int) -> None:
         select(POConsumption).where(POConsumption.case_id == case_id, POConsumption.state == "reserved")
     ).all():
         r.state = "consumed"
+
+
+def amend(
+    s: Session,
+    po: PurchaseOrder,
+    new_amount: Decimal,
+    *,
+    amended_by: str,
+    reason: str | None,
+    case_id: int | None = None,
+    source: str = "remark",
+) -> POAmendment | None:
+    """Change the PO's master amount and write the audit row (caller commits). None if it is unchanged."""
+    if po.amount == new_amount:
+        return None
+    row = POAmendment(
+        po_id=po.id, case_id=case_id, amended_by=amended_by, old_amount=po.amount, new_amount=new_amount,
+        reason=reason, source=source,
+    )
+    po.amount = new_amount
+    s.add(row)
+    return row
 
 
 def balance(s: Session, po: PurchaseOrder) -> dict[str, Decimal]:

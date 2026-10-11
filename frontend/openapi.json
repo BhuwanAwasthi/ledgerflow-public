@@ -52,6 +52,26 @@
         "title": "Body_create_api_cases_post",
         "type": "object"
       },
+      "Body_import_master_api_master__entity__import_post": {
+        "properties": {
+          "actor": {
+            "default": "admin",
+            "title": "Actor",
+            "type": "string"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "CSV in the export's format (header row required)",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_master_api_master__entity__import_post",
+        "type": "object"
+      },
       "Body_upload_portal__token__upload_post": {
         "properties": {
           "files": {
@@ -1464,6 +1484,42 @@
         "title": "JourneyStepOut",
         "type": "object"
       },
+      "MasterImportOut": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "entity": {
+            "title": "Entity",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "unchanged": {
+            "title": "Unchanged",
+            "type": "integer"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entity",
+          "created",
+          "updated",
+          "unchanged",
+          "notes"
+        ],
+        "title": "MasterImportOut",
+        "type": "object"
+      },
       "NotificationOut": {
         "properties": {
           "audience": {
@@ -1508,6 +1564,69 @@
           "created_at"
         ],
         "title": "NotificationOut",
+        "type": "object"
+      },
+      "POAmendmentOut": {
+        "properties": {
+          "amended_by": {
+            "title": "Amended By",
+            "type": "string"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "new_amount": {
+            "title": "New Amount",
+            "type": "string"
+          },
+          "old_amount": {
+            "title": "Old Amount",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "case_id",
+          "amended_by",
+          "old_amount",
+          "new_amount",
+          "reason",
+          "source",
+          "created_at"
+        ],
+        "title": "POAmendmentOut",
         "type": "object"
       },
       "POConsumptionOut": {
@@ -1564,6 +1683,13 @@
       },
       "PODetailOut": {
         "properties": {
+          "amendments": {
+            "items": {
+              "$ref": "#/components/schemas/POAmendmentOut"
+            },
+            "title": "Amendments",
+            "type": "array"
+          },
           "amount": {
             "title": "Amount",
             "type": "string"
@@ -1675,7 +1801,8 @@
           "approved_by",
           "notes",
           "lines",
-          "consumption"
+          "consumption",
+          "amendments"
         ],
         "title": "PODetailOut",
         "type": "object"
@@ -3847,6 +3974,110 @@
         "summary": "Run Fixture",
         "tags": [
           "fixtures"
+        ]
+      }
+    },
+    "/api/master/{entity}.csv": {
+      "get": {
+        "description": "Vendors, purchase orders or PO lines in the data/master CSV format (re-importable).",
+        "operationId": "export_master_api_master__entity__csv_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity",
+            "required": true,
+            "schema": {
+              "enum": [
+                "vendors",
+                "purchase_orders",
+                "po_lines"
+              ],
+              "title": "Entity",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Master",
+        "tags": [
+          "master data"
+        ]
+      }
+    },
+    "/api/master/{entity}/import": {
+      "post": {
+        "description": "Upsert from CSV, all or nothing: any invalid row rejects the file (422 with every row error). Import\nvendors, then purchase orders, then PO lines. A changed PO amount is logged as a PO amendment.",
+        "operationId": "import_master_api_master__entity__import_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity",
+            "required": true,
+            "schema": {
+              "enum": [
+                "vendors",
+                "purchase_orders",
+                "po_lines"
+              ],
+              "title": "Entity",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_master_api_master__entity__import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MasterImportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Master",
+        "tags": [
+          "master data"
         ]
       }
     },

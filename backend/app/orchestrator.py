@@ -7,18 +7,26 @@ Pauses:
 - `hitl: true` stage   -> status needs_review until `submit_review` (outcome = review action)
 - stage with `wait_for` -> runs its action, then status on_hold until `fire_event(case_id, event)`,
                            which continues at `resume_to`
+
+Threading: the workers, the job queue, the per-case locks and every agent run live on the orchestrator's own
+event loop in a background thread ("orchestrator"). Pipeline work is mostly synchronous SQLAlchemy plus LLM
+calls, so a slow query or commit there never stalls the API loop that serves SSE. Public coroutines
+(submit_review, fire_event, rerun, resume_pending, join, call) hop onto that loop; enqueue and the event bus
+are thread-safe.
 """
 
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import logging
+import threading
 import time
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any
+from typing import Any, TypeVar
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -40,6 +48,7 @@ from app.models import (
 from app.storage import Storage
 
 log = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
 # terminal statuses that give a PO reservation back (approval consumes it in template.finalize)
@@ -52,22 +61,48 @@ class OrchestratorError(Exception):
 
 # ---------------------------------------------------------------- event bus
 class EventBus:
+    """Per-case pub/sub. Thread-safe: the orchestrator publishes from its own thread, and each subscriber's
+    queue is fed on the loop that subscribed (the API loop for SSE)."""
+
     def __init__(self) -> None:
-        self._subs: dict[int, set[asyncio.Queue[dict[str, Any]]]] = defaultdict(set)
+        self._subs: dict[int, dict[asyncio.Queue[dict[str, Any]], asyncio.AbstractEventLoop]] = defaultdict(dict)
+        self._lock = threading.Lock()
 
     def subscribe(self, case_id: int) -> asyncio.Queue[dict[str, Any]]:
         q: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
-        self._subs[case_id].add(q)
+        with self._lock:
+            self._subs[case_id][q] = asyncio.get_running_loop()
         return q
 
     def unsubscribe(self, case_id: int, q: asyncio.Queue[dict[str, Any]]) -> None:
-        self._subs[case_id].discard(q)
-        if not self._subs[case_id]:
-            self._subs.pop(case_id, None)
+        with self._lock:
+            subs = self._subs.get(case_id)
+            if subs is None:
+                return
+            subs.pop(q, None)
+            if not subs:
+                self._subs.pop(case_id, None)
 
     def publish(self, case_id: int, event: str, data: dict[str, Any]) -> None:
-        for q in list(self._subs.get(case_id, ())):
-            q.put_nowait({"event": event, "data": data})
+        msg = {"event": event, "data": data}
+        with self._lock:
+            targets = list(self._subs.get(case_id, {}).items())
+        here = _running_loop()
+        for q, loop in targets:
+            if loop is here:
+                q.put_nowait(msg)
+                continue
+            try:
+                loop.call_soon_threadsafe(q.put_nowait, msg)
+            except RuntimeError:  # the subscriber's loop is closed (client gone during shutdown)
+                pass
+
+
+def _running_loop() -> asyncio.AbstractEventLoop | None:
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        return None
 
 
 def event_to_dict(ev: StageEvent) -> dict[str, Any]:
@@ -143,31 +178,96 @@ class Orchestrator:
         self.bus = EventBus()
         self._queue: asyncio.Queue[Job] = asyncio.Queue()
         self._workers: list[asyncio.Task[None]] = []
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._thread: threading.Thread | None = None
         self._locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._configs: dict[str, ResolvedConfig] = {}
         self._registries: dict[str, dict[str, Agent]] = {}
 
     # ---------------- lifecycle
     async def start(self) -> None:
-        if self._workers:
+        """Start the orchestrator thread (its own event loop) and the workers on it."""
+        if self._thread is not None:
             return
+        ready = threading.Event()
+
+        def serve() -> None:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            self._loop = loop
+            ready.set()
+            try:
+                loop.run_forever()
+            finally:
+                pending = [t for t in asyncio.all_tasks(loop) if not t.done()]
+                for task in pending:
+                    task.cancel()
+                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                loop.run_until_complete(loop.shutdown_asyncgens())
+                loop.close()
+
+        self._thread = threading.Thread(target=serve, name="orchestrator", daemon=True)
+        self._thread.start()
+        await asyncio.to_thread(ready.wait)
+        await self.call(self._start_workers())
+
+    async def _start_workers(self) -> None:
+        # asyncio primitives bind to the loop that first waits on them: fresh ones for this loop, keeping
+        # jobs enqueued before start
+        old, self._queue = self._queue, asyncio.Queue()
+        while not old.empty():
+            self._queue.put_nowait(old.get_nowait())
+        self._locks = defaultdict(asyncio.Lock)
         n = self.config_provider().app.limits.pipeline_concurrency
         self._workers = [asyncio.create_task(self._worker(i)) for i in range(n)]
 
     async def stop(self) -> None:
+        loop, thread = self._loop, self._thread
+        if loop is None or thread is None:
+            return
+        await self.call(self._stop_workers())
+        loop.call_soon_threadsafe(loop.stop)
+        await asyncio.to_thread(thread.join)
+        self._loop = self._thread = None
+
+    async def _stop_workers(self) -> None:
         for w in self._workers:
             w.cancel()
         await asyncio.gather(*self._workers, return_exceptions=True)
         self._workers = []
 
+    def submit(self, coro: Coroutine[Any, Any, T]) -> concurrent.futures.Future[T]:
+        """Schedule a coroutine on the orchestrator loop from any thread (e.g. the LLM startup probe)."""
+        if self._loop is None:
+            coro.close()
+            raise RuntimeError("orchestrator is not started")
+        return asyncio.run_coroutine_threadsafe(coro, self._loop)
+
+    async def call(self, coro: Coroutine[Any, Any, T]) -> T:
+        """Run a coroutine on the orchestrator loop and await it from any loop. Pipeline work started by an
+        API request (portal classification, vendor approval) goes through here, so its database and LLM
+        calls never run on the API loop."""
+        if self._loop is None or self._loop is _running_loop():
+            return await coro
+        return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(coro, self._loop))
+
     async def join(self) -> None:
         """Wait until every queued job (and the jobs they enqueue) has finished."""
-        await self._queue.join()
+        await self.call(self._queue.join())
 
     def enqueue(self, case_id: int, target: str | None = None, run_no: int | None = None) -> None:
-        self._queue.put_nowait(Job(case_id, target, run_no))
+        """Thread-safe: called from API handlers (any thread) and from the workers themselves."""
+        job = Job(case_id, target, run_no)
+        loop = self._loop
+        if loop is None or loop is _running_loop():
+            self._queue.put_nowait(job)
+        else:
+            loop.call_soon_threadsafe(self._queue.put_nowait, job)
 
     async def resume_pending(self) -> int:
+        return await self.call(self._resume_pending())
+
+    async def _resume_pending(self) -> int:
         """Startup: restart runs that were processing (from the stage they were in, or the target an
         accepted review/event already moved them to) or never started."""
         with self.session_factory() as s:
@@ -180,6 +280,9 @@ class Orchestrator:
 
     # ---------------- external triggers
     async def submit_review(self, case_id: int, action: str, text: str | None, actor: str) -> None:
+        await self.call(self._submit_review(case_id, action, text, actor))
+
+    async def _submit_review(self, case_id: int, action: str, text: str | None, actor: str) -> None:
         if action not in {a.value for a in ReviewAction}:
             raise OrchestratorError(f"unknown review action '{action}'")
         with self.session_factory() as s:  # fail fast instead of waiting for a running LLM stage
@@ -200,6 +303,9 @@ class Orchestrator:
 
     async def fire_event(self, case_id: int, event: str) -> bool:
         """Resume a case waiting on `event`. Returns False if the case is not waiting for it."""
+        return await self.call(self._fire_event(case_id, event))
+
+    async def _fire_event(self, case_id: int, event: str) -> bool:
         async with self._locks[case_id]:
             with self.session_factory() as s:
                 case = s.get(Case, case_id)
@@ -216,6 +322,9 @@ class Orchestrator:
         """Admin rerun / the live view's Retry: start a new run at `from_stage` (default: the stage the case
         failed or paused at). Only failed or paused cases: approved, exported and rejected cases are final, and
         a running case is refused. Returns the stage the run starts at."""
+        return await self.call(self._rerun(case_id, from_stage))
+
+    async def _rerun(self, case_id: int, from_stage: str | None) -> str:
         async with self._locks[case_id]:
             with self.session_factory() as s:
                 case = self._get_case(s, case_id)

@@ -150,6 +150,22 @@ class POLine(Base):
     gl_code: Mapped[str | None] = mapped_column(String(16))
 
 
+class POAmendment(Base):
+    """Audit trail of changes to a PO's master amount (a reviewer's set_po_amount_note on approval, or a
+    master-data CSV import)."""
+
+    __tablename__ = "po_amendments"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    po_id: Mapped[int] = mapped_column(ForeignKey("purchase_orders.id"), index=True)
+    case_id: Mapped[int | None] = mapped_column(ForeignKey("cases.id"))  # None for an import
+    amended_by: Mapped[str] = mapped_column(String(128))
+    old_amount: Mapped[Decimal] = mapped_column(Money)
+    new_amount: Mapped[Decimal] = mapped_column(Money)
+    reason: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(16), default="remark")  # remark|import
+    created_at: Mapped[datetime] = _ts()
+
+
 class GRN(Base):
     __tablename__ = "grns"
     id: Mapped[int] = mapped_column(primary_key=True)

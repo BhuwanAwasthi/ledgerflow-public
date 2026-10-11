@@ -3,7 +3,7 @@
 #   evidence      -> attached to the case for matching / review only
 #   onboarding    -> attached to a vendor_request (W-9, bank letter)
 #   ignore        -> stored, shown, not processed
-min_confidence: 0.70        # below this the document is labelled "other" and flagged for review
+min_confidence: 0.70        # below this the document is labelled "other"; a probable invoice below it is still read and sent to review
 
 labels:
   - id: invoice

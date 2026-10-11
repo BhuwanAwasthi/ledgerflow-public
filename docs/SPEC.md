@@ -176,7 +176,7 @@ PO balance: remaining = PO amount − sum(reserved + consumed). An approved case
 - `link_po {po_number}`
 - `unlink_po {}`
 - `override_rule {rule_id, reason}`
-- `set_po_amount_note {po_number, new_amount, reason}` (records the amendment and raises the effective PO amount for this case only, logged)
+- `set_po_amount_note {po_number, new_amount, reason}` (records the amendment and raises the effective PO amount for this case at once; on approval it becomes the PO master amount with a `po_amendments` audit row: amended_by, old/new amount, reason, case_id)
 - `add_vendor_memory {hint}`
 - `ask {question}` (results in needs_clarification)
 

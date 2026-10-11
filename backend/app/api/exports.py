@@ -36,7 +36,7 @@ def batch_out(b: ExportBatch) -> dict[str, Any]:
 
 
 @router.get("/api/approved", response_model=CaseListOut)
-async def approved(
+def approved(
     s: SessionDep,
     orch: Annotated[Orchestrator, Depends(get_orchestrator)],
     exported: bool | None = None,
@@ -53,7 +53,7 @@ async def approved(
 
 
 @router.post("/api/exports", response_model=ExportBatchOut, status_code=201)
-async def export(
+def export(
     body: ExportIn, s: SessionDep, storage: StorageDep, cfg: Annotated[ResolvedConfig, Depends(current_config)]
 ) -> dict[str, Any]:
     try:
@@ -64,12 +64,12 @@ async def export(
 
 
 @router.get("/api/exports", response_model=list[ExportBatchOut])
-async def list_exports(s: SessionDep) -> list[dict[str, Any]]:
+def list_exports(s: SessionDep) -> list[dict[str, Any]]:
     return [batch_out(b) for b in s.scalars(select(ExportBatch).order_by(ExportBatch.id.desc())).all()]
 
 
 @router.get("/api/exports/{batch_id}/download")
-async def download_export(batch_id: int, s: SessionDep, storage: StorageDep) -> Response:
+def download_export(batch_id: int, s: SessionDep, storage: StorageDep) -> Response:
     b = s.get(ExportBatch, batch_id)
     if b is None:
         raise HTTPException(404, f"export {batch_id} not found")
