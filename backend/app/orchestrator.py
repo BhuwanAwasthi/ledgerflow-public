@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.agents.base import Agent, AgentContext, AgentResult, StubScript, build_registry
 from app.config_loader import END_PREFIX, SKIPPED, ResolvedConfig, Stage, from_snapshot, snapshot_json
+from app.llm import LLM
 from app.models import (
     Case,
     CaseStatus,
@@ -34,6 +35,7 @@ from app.models import (
     StageStatus,
     utcnow,
 )
+from app.storage import Storage
 
 log = logging.getLogger(__name__)
 
@@ -120,13 +122,15 @@ class Orchestrator:
         *,
         script: StubScript | None = None,
         force_stub: bool = False,
-        llm: Any | None = None,
+        llm: LLM | None = None,
+        storage: Storage | None = None,
     ) -> None:
         self.session_factory = session_factory
         self.config_provider = config_provider
         self.script = script
         self.force_stub = force_stub
         self.llm = llm
+        self.storage = storage
         self.bus = EventBus()
         self._queue: asyncio.Queue[Job] = asyncio.Queue()
         self._workers: list[asyncio.Task[None]] = []
@@ -169,6 +173,10 @@ class Orchestrator:
     async def submit_review(self, case_id: int, action: str, text: str | None, actor: str) -> None:
         if action not in {a.value for a in ReviewAction}:
             raise OrchestratorError(f"unknown review action '{action}'")
+        with self.session_factory() as s:  # fail fast instead of waiting for a running LLM stage
+            status = self._get_case(s, case_id).status
+        if status != CaseStatus.needs_review:
+            raise OrchestratorError(f"case {case_id} is not waiting for review (status {status})")
         async with self._locks[case_id]:
             with self.session_factory() as s:
                 case = self._get_case(s, case_id)
@@ -338,6 +346,8 @@ class Orchestrator:
                     metrics=metrics,
                     reasoning=[*attempts, *result.reasoning, *note],
                 )
+                for child_id in result.spawn:  # e.g. one case per invoice of a bundle
+                    self.enqueue(child_id)
             raise RuntimeError(
                 f"case {case.ref}: more than {max_steps} stages in one run (loop in workflow?)"
             )
@@ -437,6 +447,7 @@ class Orchestrator:
                 state=self._case_state(s, case.id),
                 session_factory=self.session_factory,
                 llm=self.llm,
+                storage=self.storage,
                 emit=emit,
             )
             t0 = time.perf_counter()

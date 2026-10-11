@@ -8,8 +8,14 @@ actions:
   normalise:
     outcomes: [ok]
 params:
-  date_formats_hint: [MDY, DMY, ISO]
+  date_formats_hint: [MDY, DMY, ISO]   # order used for numeric dates such as 10/02/2026
+  date_numeric_formats:
+    ISO: ["%Y-%m-%d", "%Y/%m/%d"]
+    MDY: ["%m/%d/%Y", "%m-%d-%Y", "%m/%d/%y"]
+    DMY: ["%d/%m/%Y", "%d.%m.%Y", "%d-%m-%Y", "%d/%m/%y"]
+  date_text_formats: ["%b %d, %Y", "%B %d, %Y", "%d %b %Y", "%d %B %Y"]   # month-name dates (unambiguous); commas optional
   default_currency: USD
+  currency_symbols: { "$": USD, "€": EUR, "£": GBP, "₹": INR }
   invoice_number_normalisation: upper_alnum   # "INV-0042" -> "INV0042"
   uom_aliases: { hrs: hour, hr: hour, hours: hour, ea: each, pcs: each, units: each }
 retries: 0

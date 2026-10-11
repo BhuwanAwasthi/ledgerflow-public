@@ -3,7 +3,8 @@
 # Edit here or in Agent Studio. The loader rejects unmapped outcomes, unknown targets and unreachable stages.
 #
 # Special targets:
-#   end:<status>   terminal case status (approved | rejected | unsupported | failed)
+#   end:<status>   terminal case status (approved | rejected | unsupported | split | failed)
+#                  split = a bundle whose invoices continue as child cases
 # Special stage keys:
 #   hitl: true     pauses the run until a review action arrives; outcomes = review actions
 #   wait_for       pauses until an event arrives (vendor_approved, info_received); then continues at resume_to
@@ -31,7 +32,7 @@ stages:
     agent: classifier
     action: classify
     status_label: Classified
-    next: { has_invoice: extract, no_invoice: "end:unsupported" }
+    next: { has_invoice: extract, no_invoice: "end:unsupported", split: "end:split" }
 
   - id: extract
     agent: extraction

@@ -31,7 +31,7 @@ async def healthz(request: Request) -> HealthOut:
         ok=db == "ok" and storage == "ok",
         db=db,
         storage=storage,
-        llm_path=state.llm_path,
+        llm_path=state.llm.path if state.llm is not None else "unconfigured",
         config_hash=getattr(state, "config_hash", None),
     )
 

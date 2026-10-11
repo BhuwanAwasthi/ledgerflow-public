@@ -16,8 +16,8 @@ dev:
 test:
 	$(BACKEND) run pytest
 
-test-live:
-	$(BACKEND) run pytest -m live
+test-live:  # make test-live ARGS="-k extraction -s"
+	$(BACKEND) run pytest -m live $(ARGS)
 
 lint:
 	$(BACKEND) run ruff check .

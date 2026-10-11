@@ -1,7 +1,7 @@
 """Agent contract (SPEC section 5), the registry that builds agents from config, and StubAgent.
 
 An agent is a class + config/agents/<id>.yaml. The registry imports the YAML `handler`; while a handler
-module does not exist yet (phase B1) the agent runs as a StubAgent that returns canned outcomes.
+module does not exist yet the agent runs as a StubAgent that returns canned outcomes.
 """
 
 from __future__ import annotations
@@ -14,11 +14,16 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from jinja2.sandbox import SandboxedEnvironment
+from pydantic import BaseModel
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config_loader import AgentConfig, ResolvedConfig
+from app.llm import LLM, LLMRequest, Part
+from app.storage import Storage
 
 log = logging.getLogger(__name__)
+_JINJA = SandboxedEnvironment(trim_blocks=False, autoescape=False)
 
 
 @dataclass
@@ -30,6 +35,7 @@ class AgentResult:
     metrics: dict[str, Any] = field(
         default_factory=dict
     )  # tokens_in, tokens_out, cost_usd, latency_ms, cache_hit
+    spawn: list[int] = field(default_factory=list)  # new case ids the orchestrator queues (bundle split)
 
 
 async def _no_emit(msg: str) -> None:
@@ -46,7 +52,8 @@ class AgentContext:
     agent_config: AgentConfig
     state: dict[str, Any]  # case state: completed stage outputs folded per agent id
     session_factory: sessionmaker[Session]  # read access to case, documents, master data
-    llm: Any | None = None
+    llm: LLM | None = None
+    storage: Storage | None = None  # document bytes, page PNGs, text layers
     emit: Callable[[str], Awaitable[None]] = _no_emit  # sub-step progress lines (live view)
 
     @property
@@ -63,6 +70,42 @@ class Agent(ABC):
 
     @abstractmethod
     async def run(self, action: str, ctx: AgentContext) -> AgentResult: ...
+
+    async def call_llm(
+        self,
+        ctx: AgentContext,
+        action: str,
+        schema: type[BaseModel],
+        content: list[Part],
+        *,
+        prompt_vars: dict[str, Any] | None = None,
+        json_schema: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> tuple[BaseModel, dict[str, Any]]:
+        """Render the action's prompt (sandboxed Jinja2) and make one structured call with the agent's
+        model settings from its YAML (falling back to app.yaml defaults)."""
+        if ctx.llm is None:
+            raise RuntimeError("no LLM configured (set AZURE_OPENAI_* or LLM_BACKEND=fake)")
+        act = self.config.actions[action]
+        if not act.prompt:
+            raise RuntimeError(f"agents/{self.id}.yaml: action '{action}' has no prompt")
+        instructions = _JINJA.from_string(ctx.config.prompts[act.prompt]).render(**(prompt_vars or {}))
+        model = self.config.model
+        if model is None or not model.max_output_tokens:
+            raise RuntimeError(f"agents/{self.id}.yaml: set model.max_output_tokens for an LLM agent")
+        req = LLMRequest(
+            agent=self.id,
+            action=action,
+            schema=schema,
+            instructions=instructions,
+            content=content,
+            effort=model.reasoning_effort or ctx.config.app.llm.default_reasoning_effort,
+            max_output_tokens=model.max_output_tokens,
+            deployment=model.deployment,
+            json_schema=json_schema,
+            context=context or {},
+        )
+        return await ctx.llm.structured(req, ctx.config)
 
 
 class StubScript:

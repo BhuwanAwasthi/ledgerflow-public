@@ -55,3 +55,28 @@ def create_case(
         s.add(Document(case_id=case.id, filename=f.filename, mime=f.mime, sha256=sha, storage_key=key))
     s.commit()
     return case
+
+
+def create_child_case(
+    s: Session, cfg: ResolvedConfig, parent: Case, documents: list[Document], note: str
+) -> Case:
+    """A case for one invoice of a bundle: same submitter, source and config snapshot as the parent; its
+    documents point at the parent's stored file with a page range (no bytes copied)."""
+    child = Case(
+        submitter_name=parent.submitter_name,
+        submitter_email=parent.submitter_email,
+        note=note,
+        source=parent.source,
+        status=CaseStatus.received,
+        parent_case_id=parent.id,
+        config_hash=parent.config_hash or cfg.hash,
+        config_snapshot=parent.config_snapshot or snapshot_json(cfg),
+    )
+    s.add(child)
+    s.flush()
+    child.ref = f"{cfg.app.app.case_ref_prefix}{child.id:04d}"
+    for d in documents:
+        d.case_id = child.id
+        s.add(d)
+    s.flush()
+    return child

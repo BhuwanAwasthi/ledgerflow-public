@@ -6,7 +6,7 @@ enabled: true
 handler: app.agents.classifier:ClassifierAgent
 actions:
   classify:
-    outcomes: [has_invoice, no_invoice]
+    outcomes: [has_invoice, no_invoice, split]   # split = bundle of several invoices -> one child case each
     prompt: prompts/classifier.md
 model:
   reasoning_effort: low
@@ -14,5 +14,6 @@ model:
 params:
   pages_per_document: 2        # first N page images sent to the model
   labels_file: document_types.yaml
+  max_text_chars: 12000        # text layer sent alongside the images (all pages, truncated)
 retries: 1
 timeout_s: 90

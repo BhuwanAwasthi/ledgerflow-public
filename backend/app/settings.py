@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     azure_openai_endpoint: str = ""
     azure_openai_api_key: str = ""
     azure_openai_deployment: str = ""
+    # azure (needs AZURE_OPENAI_*) | fake (recorded outputs from backend/tests/llm_fixtures, for UI work offline)
+    llm_backend: str = "azure"
+    llm_fixtures_dir: Path = BACKEND_DIR / "tests" / "llm_fixtures"
 
     cors_origins: str = "http://localhost:5173"
     public_app_url: str = "http://localhost:5173"

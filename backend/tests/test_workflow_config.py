@@ -33,7 +33,8 @@ def test_broken_copy_with_unmapped_outcome_is_rejected(tmp_path: Path):
     wf = broken / "workflow.yaml"
     wf.write_text(
         wf.read_text(encoding="utf-8").replace(
-            'next: { has_invoice: extract, no_invoice: "end:unsupported" }', "next: { has_invoice: extract }"
+            'next: { has_invoice: extract, no_invoice: "end:unsupported", split: "end:split" }',
+            'next: { has_invoice: extract, split: "end:split" }',
         ),
         encoding="utf-8",
     )

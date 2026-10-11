@@ -17,5 +17,9 @@ params:
   low_confidence_below: 0.60
   use_vendor_memory: true      # inject learned hints for known vendors
   locate_values_in_text_layer: true   # exact bboxes via PyMuPDF search_for when text exists
+  locate_date_formats: ["%b %d, %Y", "%B %d, %Y", "%d %b %Y", "%d %B %Y", "%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"]
+  confidence_fields: [vendor_name, invoice_number, invoice_date, total]   # header fields behind low_confidence and case.confidence
+  max_text_chars: 20000        # text layer sent alongside the images
+  max_vendor_hints: 10
 retries: 1
 timeout_s: 150

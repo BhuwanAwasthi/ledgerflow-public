@@ -60,11 +60,12 @@ class CaseStatus(StrEnum):
     rejected = "rejected"
     failed = "failed"
     unsupported = "unsupported"  # workflow.yaml `end:unsupported` (no invoice in the upload)
+    split = "split"  # workflow.yaml `end:split` (bundle: each invoice continues as a child case)
 
 
 # Statuses a workflow may finish in via `end:<status>`.
 TERMINAL_STATUSES = frozenset(
-    {CaseStatus.approved, CaseStatus.rejected, CaseStatus.unsupported, CaseStatus.failed}
+    {CaseStatus.approved, CaseStatus.rejected, CaseStatus.unsupported, CaseStatus.split, CaseStatus.failed}
 )
 
 

@@ -87,3 +87,16 @@ def test_upload_run_stream_and_review(test_settings):
         assert wait_status(client, case["id"], {"approved"})["current_stage"] == "end:approved"
         assert client.post(f"/api/cases/{case['id']}/review", json={"action": "approve"}).status_code == 409
         assert client.get("/api/cases/999").status_code == 404
+
+
+def test_fake_llm_backend_runs_real_perception_agents(test_settings):
+    settings = test_settings.model_copy(update={"force_stub_agents": False, "llm_backend": "fake"})
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/healthz").json()["llm_path"] == "fake"
+        case = client.post("/api/fixtures/S01_happy/run").json()
+        body = wait_status(client, case["id"], {"approved", "failed"})
+        assert body["status"] == "approved"
+        events = parse_sse(client.get(f"/api/cases/{case['id']}/events/stream?follow=false").text)
+        extract = [d for e, d in events if e == "stage_event" and d["stage_id"] == "extract" and d["status"] == "completed"]
+        assert extract and extract[0]["output"]["invoice"]["invoice_number"] == "INV-A-2207"
+        assert extract[0]["output"]["field_meta"]["total"]["source"] == "text_layer"

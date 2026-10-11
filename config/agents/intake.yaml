@@ -11,5 +11,6 @@ params:
   accepted_mime: [application/pdf, image/png, image/jpeg, image/tiff, application/vnd.openxmlformats-officedocument.wordprocessingml.document]
   render_dpi: 150
   max_pages: 8
+  min_text_chars: 20          # fewer extractable characters than this = scanned PDF (images only)
 retries: 0
 timeout_s: 60
