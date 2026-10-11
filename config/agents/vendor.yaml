@@ -1,0 +1,22 @@
+id: vendor
+name: Vendor verification
+description: Matches the invoice to the vendor master, checks bank details, and opens a light onboarding request for new vendors.
+kind: hybrid
+enabled: true
+handler: app.agents.vendor:VendorAgent
+actions:
+  check:
+    outcomes: [approved_vendor, new_vendor, bank_mismatch, inactive_vendor]
+  request_onboarding:
+    outcomes: [requested]
+params:
+  name_match_threshold: 90          # rapidfuzz token_set_ratio
+  docs_required_new_vendor: [tax_form, bank_letter]
+  docs_required_bank_change: [bank_letter]
+  verify_bank_letter_name: true     # legal name on bank letter must fuzzy-match vendor name (>= 85)
+  tax_id_formats:                   # regex per country for onboarding checks
+    US: "^\\d{2}-\\d{7}$"
+    GB: "^GB\\d{9}$"
+    IN: "^\\d{2}[A-Z]{5}\\d{4}[A-Z][A-Z\\d]Z[A-Z\\d]$"
+retries: 0
+timeout_s: 60

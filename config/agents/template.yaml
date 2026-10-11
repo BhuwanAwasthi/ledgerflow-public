@@ -1,0 +1,16 @@
+id: template
+name: ERP template
+description: Renders the ERP import rows from the selected ERP profile, validates required columns, versions every change.
+kind: code
+enabled: true
+handler: app.agents.template:TemplateAgent
+actions:
+  generate_draft:
+    outcomes: [ok]
+  finalize:
+    outcomes: [ok]
+params:
+  erp_profile: sage_intacct        # default; reviewer can switch per case
+  formats: [csv, xlsx]
+retries: 0
+timeout_s: 30

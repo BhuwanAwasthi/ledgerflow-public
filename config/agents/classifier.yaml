@@ -1,0 +1,18 @@
+id: classifier
+name: Document classifier
+description: Labels every document (invoice, credit note, PO, delivery note, W-9, bank letter...) and detects multi-invoice bundles.
+kind: llm
+enabled: true
+handler: app.agents.classifier:ClassifierAgent
+actions:
+  classify:
+    outcomes: [has_invoice, no_invoice]
+    prompt: prompts/classifier.md
+model:
+  reasoning_effort: low
+  max_output_tokens: 4000
+params:
+  pages_per_document: 2        # first N page images sent to the model
+  labels_file: document_types.yaml
+retries: 1
+timeout_s: 90

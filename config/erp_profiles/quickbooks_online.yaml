@@ -1,0 +1,21 @@
+# QuickBooks Online bill import (CSV), one row per line. Verify headers against the QBO import screen.
+id: quickbooks_online
+name: QuickBooks Online - Bills
+file_format: csv
+grain: line
+filename_template: "QBO_BILL_{{ case.ref }}_v{{ version }}.csv"
+date_format: "%m/%d/%Y"
+columns:
+  - { header: "Bill No",          value: "{{ inv.invoice_number }}",          required: true }
+  - { header: "Supplier",         value: "{{ vendor.legal_name }}",           required: true }
+  - { header: "Bill Date",        value: "{{ inv.invoice_date | fmt_date }}", required: true }
+  - { header: "Due Date",         value: "{{ inv.due_date | fmt_date }}",     required: false }
+  - { header: "Terms",            value: "{{ inv.payment_terms or '' }}",     required: false }
+  - { header: "Memo",             value: "{{ po.po_number if po else '' }}",  required: false }
+  - { header: "Account",          value: "{{ line.gl_code }}",                required: true }
+  - { header: "Line Description", value: "{{ line.description }}",            required: false }
+  - { header: "Line Amount",      value: "{{ line.amount | money }}",         required: true }
+  - { header: "Currency",         value: "{{ inv.currency }}",                required: false }
+batch:
+  filename_template: "QBO_BILL_BATCH_{{ batch.ref }}.csv"
+  mode: concat_rows

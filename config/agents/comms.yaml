@@ -1,0 +1,24 @@
+id: comms
+name: Communications
+description: No email API. Drafts vendor/submitter messages with mailto links and vendor portal upload links; creates in-app notifications.
+kind: hybrid
+enabled: true
+handler: app.agents.comms:CommsAgent
+actions:
+  draft_request:
+    outcomes: [drafted]
+    prompt: prompts/comms_request.md
+  draft_rejection:
+    outcomes: [drafted]
+    prompt: prompts/comms_rejection.md
+  notify:
+    outcomes: [ok]
+model:
+  reasoning_effort: low
+  max_output_tokens: 1500
+params:
+  include_portal_link: true
+  portal_base_url_env: PUBLIC_APP_URL
+  signature: "Accounts Payable, Demo Co."
+retries: 1
+timeout_s: 60

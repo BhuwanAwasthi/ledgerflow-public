@@ -1,0 +1,18 @@
+id: decision
+name: Decision
+description: Turns rule results into Auto-approve / Needs review / On hold / Reject (code) and writes a buyer-friendly explanation (LLM, cannot change the decision).
+kind: hybrid
+enabled: true
+handler: app.agents.decision:DecisionAgent
+actions:
+  decide:
+    outcomes: [auto_approve, needs_review, on_hold, reject]
+    prompt: prompts/decision_explainer.md
+model:
+  reasoning_effort: low
+  max_output_tokens: 2000
+params:
+  reserve_po_balance_on: [auto_approve, needs_review]
+  explanation_max_sentences: 4
+retries: 1
+timeout_s: 60

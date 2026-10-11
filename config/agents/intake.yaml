@@ -1,0 +1,15 @@
+id: intake
+name: Intake
+description: Stores uploads, hashes them, converts images/DOCX to PDF, renders page images and the text layer.
+kind: code
+enabled: true
+handler: app.agents.intake:IntakeAgent
+actions:
+  ingest:
+    outcomes: [ok, empty, too_large]
+params:
+  accepted_mime: [application/pdf, image/png, image/jpeg, image/tiff, application/vnd.openxmlformats-officedocument.wordprocessingml.document]
+  render_dpi: 150
+  max_pages: 8
+retries: 0
+timeout_s: 60

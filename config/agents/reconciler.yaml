@@ -1,0 +1,18 @@
+id: reconciler
+name: Reconciler
+description: Converts a reviewer remark into a typed ChangeSet, applies it, logs overrides, and triggers a rerun of policy -> decision -> template.
+kind: hybrid
+enabled: true
+handler: app.agents.reconciler:ReconcilerAgent
+actions:
+  apply_remark:
+    outcomes: [changes_applied, needs_clarification]
+    prompt: prompts/reconciler.md
+model:
+  reasoning_effort: medium
+  max_output_tokens: 4000
+params:
+  allowed_ops: [set_field, set_gl, link_po, unlink_po, override_rule, set_po_amount_note, add_vendor_memory, ask]
+  non_overridable_rules: [duplicate_exact, bank_details_match]   # remarks can never waive these
+retries: 1
+timeout_s: 90

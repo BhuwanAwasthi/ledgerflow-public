@@ -1,0 +1,21 @@
+id: extraction
+name: Invoice extraction
+description: Reads the invoice (text layer + page images) into the InvoiceExtraction schema with per-field confidence and location.
+kind: llm
+enabled: true
+handler: app.agents.extraction:ExtractionAgent
+actions:
+  extract:
+    outcomes: [ok, low_confidence, failed]
+    prompt: prompts/extraction.md
+model:
+  reasoning_effort: medium
+  max_output_tokens: 12000
+params:
+  send_images: true
+  send_text_layer: true
+  low_confidence_below: 0.60
+  use_vendor_memory: true      # inject learned hints for known vendors
+  locate_values_in_text_layer: true   # exact bboxes via PyMuPDF search_for when text exists
+retries: 1
+timeout_s: 150

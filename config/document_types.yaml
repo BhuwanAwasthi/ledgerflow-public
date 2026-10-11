@@ -1,0 +1,32 @@
+# Classifier label set. route decides what happens to a document of this type.
+#   case_invoice  -> becomes (or joins) an invoice case and runs the full pipeline
+#   evidence      -> attached to the case for matching / review only
+#   onboarding    -> attached to a vendor_request (W-9, bank letter)
+#   ignore        -> stored, shown, not processed
+min_confidence: 0.70        # below this the document is labelled "other" and flagged for review
+
+labels:
+  - id: invoice
+    description: A bill from a vendor requesting payment, with an invoice number, amounts and a total.
+    route: case_invoice
+  - id: credit_note
+    description: A vendor credit memo that reduces an amount owed, often referencing an original invoice.
+    route: case_invoice
+  - id: purchase_order
+    description: A buyer-issued order with a PO number, ordered items, quantities and prices.
+    route: evidence
+  - id: delivery_note
+    description: Goods received note, delivery note or packing slip showing quantities delivered.
+    route: evidence
+  - id: statement
+    description: A statement of account listing several invoices and balances; not itself payable.
+    route: ignore
+  - id: tax_form
+    description: W-9, W-8BEN or a tax registration certificate for a vendor.
+    route: onboarding
+  - id: bank_letter
+    description: A letter on bank or vendor letterhead confirming account holder name and account details.
+    route: onboarding
+  - id: other
+    description: Anything else (marketing, contracts, unreadable pages).
+    route: ignore

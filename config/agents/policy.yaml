@@ -1,0 +1,13 @@
+id: policy
+name: Policy engine
+description: Evaluates every enabled rule in rules.yaml and records pass / warn / fail with evidence and a plain-English reason.
+kind: code
+enabled: true
+handler: app.agents.policy:PolicyAgent
+actions:
+  evaluate:
+    outcomes: [evaluated]
+params:
+  rules_file: rules.yaml
+retries: 0
+timeout_s: 30

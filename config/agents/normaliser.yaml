@@ -1,0 +1,16 @@
+id: normaliser
+name: Normaliser
+description: Canonicalises dates, amounts, currency, invoice numbers and units; splits embedded tax.
+kind: code
+enabled: true
+handler: app.agents.normaliser:NormaliserAgent
+actions:
+  normalise:
+    outcomes: [ok]
+params:
+  date_formats_hint: [MDY, DMY, ISO]
+  default_currency: USD
+  invoice_number_normalisation: upper_alnum   # "INV-0042" -> "INV0042"
+  uom_aliases: { hrs: hour, hr: hour, hours: hour, ea: each, pcs: each, units: each }
+retries: 0
+timeout_s: 30

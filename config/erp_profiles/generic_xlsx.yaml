@@ -1,0 +1,24 @@
+# Human-readable workbook: header sheet + lines sheet. Useful when the ERP is unknown.
+id: generic_xlsx
+name: Generic AP workbook (Excel)
+file_format: xlsx
+grain: line
+filename_template: "AP_{{ case.ref }}_v{{ version }}.xlsx"
+date_format: "%Y-%m-%d"
+columns:
+  - { header: "Case",        value: "{{ case.ref }}",                    required: true }
+  - { header: "Vendor",      value: "{{ vendor.legal_name }}",           required: true }
+  - { header: "Invoice No",  value: "{{ inv.invoice_number }}",          required: true }
+  - { header: "Invoice Date", value: "{{ inv.invoice_date | fmt_date }}", required: true }
+  - { header: "PO",          value: "{{ po.po_number if po else 'NON-PO' }}", required: false }
+  - { header: "Line",        value: "{{ loop_index + 1 }}",              required: true }
+  - { header: "Description", value: "{{ line.description }}",            required: false }
+  - { header: "Qty",         value: "{{ line.qty }}",                    required: false }
+  - { header: "Unit Price",  value: "{{ line.unit_price | money }}",     required: false }
+  - { header: "Amount",      value: "{{ line.amount | money }}",         required: true }
+  - { header: "GL",          value: "{{ line.gl_code }}",                required: true }
+  - { header: "Decision",    value: "{{ case.decision }}",               required: true }
+  - { header: "Approved By", value: "{{ case.approved_by or 'auto' }}",  required: false }
+batch:
+  filename_template: "AP_BATCH_{{ batch.ref }}.xlsx"
+  mode: concat_rows

@@ -1,0 +1,50 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make *)",
+      "Bash(uv *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(pytest *)",
+      "Bash(ruff *)",
+      "Bash(curl http://localhost*)",
+      "Bash(curl -s http://localhost*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git log*)",
+      "Bash(git worktree *)",
+      "Bash(git merge *)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "PowerShell(make *)",
+      "PowerShell(uv *)",
+      "PowerShell(npm *)",
+      "PowerShell(npx *)",
+      "PowerShell(pytest *)",
+      "PowerShell(ruff *)",
+      "PowerShell(curl.exe http://localhost*)",
+      "PowerShell(curl.exe -s http://localhost*)",
+      "PowerShell(git status*)",
+      "PowerShell(git diff*)",
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)",
+      "PowerShell(git log*)",
+      "PowerShell(git worktree *)",
+      "PowerShell(git merge *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./backend/.env)",
+      "Bash(cat .env*)",
+      "PowerShell(cat .env*)",
+      "PowerShell(type .env*)",
+      "PowerShell(Get-Content .env*)",
+      "PowerShell(gc .env*)",
+      "Bash(git push --force*)",
+      "Bash(rm -rf /*)"
+    ]
+  }
+}

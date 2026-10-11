@@ -1,0 +1,33 @@
+app:
+  name: LedgerFlow
+  tagline: Invoices in, decisions out.
+  company: Demo Co. (fictional buyer)
+  case_ref_prefix: INV-2026-
+  default_erp_profile: sage_intacct
+  sla_hours: { needs_review: 24, on_hold: 72 }
+
+features:
+  vendor_portal: true      # public upload link for missing documents
+  vendor_memory: true      # reviewer corrections become extraction hints per vendor
+  what_if: true            # rule simulator screen
+  imap_intake: false       # optional free Gmail IMAP polling (app password); off by default
+  llm_cache: false         # true while building UI; false for the live demo
+  replay: true             # re-animate finished runs in the live view
+
+llm:
+  provider: azure_openai
+  # deployment and endpoint come from env: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT
+  api_path: auto            # auto | responses | chat  (auto = decided by startup probe)
+  pricing_per_1m_usd:       # fill in from your Azure price sheet; used for the cost meter only
+    input: 0.0
+    cached_input: 0.0
+    output: 0.0
+  default_reasoning_effort: low
+  request_timeout_s: 120
+
+limits:
+  max_upload_mb: 15
+  max_pages_per_document: 8
+  render_dpi: 150
+  pipeline_concurrency: 2
+  stage_timeout_s: 180

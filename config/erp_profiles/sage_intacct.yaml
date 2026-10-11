@@ -1,0 +1,28 @@
+# Sage Intacct AP Bill import, one row per bill line.
+# Column headers modelled on Sage Intacct's AP bill CSV import. Check them against your HCN AP Curator
+# template before the demo and edit here (or in Agent Studio); no code change needed.
+id: sage_intacct
+name: Sage Intacct - AP Bills
+file_format: csv
+grain: line
+filename_template: "SI_APBILL_{{ case.ref }}_v{{ version }}.csv"
+date_format: "%m/%d/%Y"
+columns:
+  - { header: DONOTIMPORT,  value: "",                                              required: false }
+  - { header: BILL_NO,      value: "{{ inv.invoice_number }}",                      required: true }
+  - { header: VENDOR_ID,    value: "{{ vendor.code }}",                             required: true }
+  - { header: DATE_CREATED, value: "{{ inv.invoice_date | fmt_date }}",             required: true }
+  - { header: DATE_DUE,     value: "{{ inv.due_date | fmt_date }}",                 required: false }
+  - { header: TERMNAME,     value: "{{ inv.payment_terms or '' }}",                 required: false }
+  - { header: DESCRIPTION,  value: "{{ vendor.legal_name }} {{ inv.invoice_number }}", required: false }
+  - { header: CURRENCY,     value: "{{ inv.currency }}",                            required: true }
+  - { header: PONUMBER,     value: "{{ po.po_number if po else '' }}",              required: false }
+  - { header: LINE_NO,      value: "{{ loop_index + 1 }}",                          required: true }
+  - { header: ACCT_NO,      value: "{{ line.gl_code }}",                            required: true }
+  - { header: DEPARTMENT_ID, value: "{{ line.department or '' }}",                  required: false }
+  - { header: MEMO,         value: "{{ line.description }}",                        required: false }
+  - { header: AMOUNT,       value: "{{ line.amount | money }}",                     required: true }
+  - { header: TAX_AMOUNT,   value: "{{ line.tax_amount | money }}",                 required: false }
+batch:
+  filename_template: "SI_APBILL_BATCH_{{ batch.ref }}.csv"
+  mode: concat_rows          # all selected invoices' rows in one import file, header once

@@ -1,0 +1,149 @@
+# Procurement policy. Deterministic: evaluated in code by backend/app/rules/engine.py.
+# severity on failure: reject > hold > review > info (info never blocks auto-approve)
+# explain: Jinja2 template rendered with the rule's evidence dict -> shown to reviewers verbatim.
+
+currency: USD
+decision_precedence: [reject, hold, review]
+
+auto_approve_gates:
+  min_extraction_confidence: 0.90     # every required field >= this
+  max_amount: 25000                   # invoice total above this always goes to review
+  require_explicit_po: true           # implied PO match can never auto-approve
+  require_approved_vendor: true
+
+rules:
+  - id: required_fields
+    name: Required fields present
+    enabled: true
+    applies_to: all
+    severity: hold
+    params: { fields: [invoice_number, invoice_date, total, vendor_name] }
+    explain: "Missing {{ missing | join(', ') }}. We need these before the invoice can be processed."
+
+  - id: low_confidence_fields
+    name: Extraction confidence
+    enabled: true
+    applies_to: all
+    severity: review
+    params: { min_confidence: 0.60 }
+    explain: "Low read confidence on {{ fields | join(', ') }}; please confirm against the document."
+
+  - id: arithmetic
+    name: Lines, tax and total add up
+    enabled: true
+    applies_to: all
+    severity: review
+    params: { abs_tolerance: 0.05 }
+    explain: "Lines {{ lines_sum }} + tax {{ tax }} + shipping {{ shipping }} = {{ computed }}, but the invoice total is {{ total }}."
+
+  - id: duplicate_exact
+    name: Not a duplicate
+    enabled: true
+    applies_to: all
+    severity: reject
+    params: {}
+    explain: "Same vendor, invoice number {{ number }} and amount {{ amount }} as {{ other_ref }} (received {{ other_date }})."
+
+  - id: duplicate_near
+    name: Not a possible duplicate
+    enabled: true
+    applies_to: all
+    severity: review
+    params: { window_days: 30 }
+    explain: "Same vendor and amount {{ amount }} as {{ other_ref }} within {{ days }} days, with a different invoice number."
+
+  - id: vendor_approved
+    name: Vendor is approved
+    enabled: true
+    applies_to: all
+    severity: hold
+    params: {}
+    explain: "{{ vendor_name }} is {{ status }} in the vendor master."
+
+  - id: bank_details_match
+    name: Bank details match vendor master
+    enabled: true
+    applies_to: all
+    severity: hold
+    params: {}
+    explain: "Invoice asks for payment to account ending {{ invoice_last4 }}, but the vendor master has {{ master_last4 }}. Changed bank details are a common payment-fraud pattern; we need a signed bank letter."
+
+  - id: po_valid
+    name: PO exists, is open and belongs to vendor
+    enabled: true
+    applies_to: po
+    severity: review
+    params: {}
+    explain: "{{ reason }}"
+
+  - id: implied_po_requires_review
+    name: PO was inferred, not quoted
+    enabled: true
+    applies_to: po
+    severity: review
+    params: { min_score: 0.85 }
+    explain: "No PO number on the invoice. Best match is {{ po_number }} (score {{ score }}); please confirm."
+
+  - id: price_tolerance
+    name: Unit prices within tolerance
+    enabled: true
+    applies_to: po
+    severity: review
+    params: { pct: 2.0, abs: 50.0, mode: both_must_exceed }   # both_must_exceed | either_exceeds
+    explain: "{{ line_desc }}: invoiced {{ inv_price }} vs PO {{ po_price }} ({{ pct }}%, {{ abs_diff }} per unit). Tolerance {{ tol_pct }}% / {{ tol_abs }}."
+
+  - id: quantity_vs_grn
+    name: Quantity not above goods received
+    enabled: true
+    applies_to: po
+    severity: review
+    params: {}
+    explain: "{{ line_desc }}: invoiced qty {{ inv_qty }} but only {{ grn_qty }} received."
+
+  - id: po_balance
+    name: Within remaining PO balance
+    enabled: true
+    applies_to: po
+    severity: review
+    params: { pct: 2.0 }
+    explain: "Invoice subtotal {{ amount }} vs PO {{ po_number }} remaining {{ remaining }} (already invoiced {{ consumed }} of {{ po_amount }}): over by {{ over_pct }}%, tolerance {{ tol_pct }}%."
+
+  - id: unmatched_lines
+    name: All lines map to the PO
+    enabled: true
+    applies_to: po
+    severity: review
+    params: {}
+    explain: "Lines not on {{ po_number }}: {{ lines | join('; ') }}."
+
+  - id: non_po_requires_review
+    name: Non-PO invoice needs budget-owner approval
+    enabled: true
+    applies_to: non_po
+    severity: review
+    params: {}
+    explain: "No PO found. Suggested coding {{ gl_code }} {{ gl_name }}; route to budget owner."
+
+  - id: currency_match
+    name: Currency matches PO
+    enabled: true
+    applies_to: po
+    severity: review
+    params: {}
+    explain: "Invoice in {{ inv_currency }}, PO in {{ po_currency }}."
+
+  - id: date_sanity
+    name: Invoice date is plausible
+    enabled: true
+    applies_to: all
+    severity: review
+    params: { max_future_days: 3, max_age_days: 365 }
+    explain: "Invoice date {{ date }} is {{ reason }}."
+
+  - id: tax_rate_valid
+    name: Tax rate is an allowed rate
+    enabled: true
+    applies_to: all
+    severity: review
+    params: { allowed_rates_pct: [0, 5, 6.25, 7.25, 8.25, 10, 20] }
+    explain: "Tax rate {{ rate }}% is not an allowed rate."

@@ -1,0 +1,152 @@
+# Stage graph for the AP invoice process.
+# Equivalent of the HCN Work Orders table: each stage = (agent, action) + outcome -> next stage (key `next`; never `on`, which YAML reads as true).
+# Edit here or in Agent Studio. The loader rejects unmapped outcomes, unknown targets and unreachable stages.
+#
+# Special targets:
+#   end:<status>   terminal case status (approved | rejected | unsupported | failed)
+# Special stage keys:
+#   hitl: true     pauses the run until a review action arrives; outcomes = review actions
+#   wait_for       pauses until an event arrives (vendor_approved, info_received); then continues at resume_to
+
+process: ap_invoice
+version: 1
+start: intake
+
+options:
+  # Once a case has been in human review, an auto_approve outcome is routed to template_draft -> review,
+  # so a human always closes a case they touched (the remark loop never self-approves).
+  sticky_review: true
+  # When a stage has wait_for, the run pauses after the stage's action completes;
+  # the matching event resumes it at resume_to. Its `next` mapping is still required for validation.
+
+stages:
+  - id: intake
+    agent: intake
+    action: ingest
+    status_label: Received
+    next: { ok: classify, empty: "end:failed", too_large: "end:failed" }
+
+  - id: classify
+    agent: classifier
+    action: classify
+    status_label: Classified
+    next: { has_invoice: extract, no_invoice: "end:unsupported" }
+
+  - id: extract
+    agent: extraction
+    action: extract
+    status_label: Extracted
+    retries: 1
+    next: { ok: normalise, low_confidence: normalise, failed: "end:failed", skipped: normalise }
+
+  - id: normalise
+    agent: normaliser
+    action: normalise
+    status_label: Extracted
+    next: { ok: vendor_check }
+
+  - id: vendor_check
+    agent: vendor
+    action: check
+    status_label: Vendor checked
+    next:
+      approved_vendor: po_match
+      new_vendor: onboarding
+      bank_mismatch: po_match        # keep analysing; bank_details_match fails later -> on_hold with fraud wording
+      inactive_vendor: po_match      # vendor_approved rule fails later -> on_hold
+      skipped: po_match
+
+  - id: onboarding
+    agent: vendor
+    action: request_onboarding
+    status_label: Waiting for vendor documents
+    next: { requested: await_vendor }
+
+  - id: await_vendor
+    agent: comms
+    action: draft_request
+    status_label: Waiting for vendor documents
+    wait_for: vendor_approved         # fired when an admin approves the vendor after the portal upload
+    resume_to: vendor_check
+    next: { drafted: vendor_check }
+
+  - id: po_match
+    agent: po_matching
+    action: match
+    status_label: Matched
+    next: { matched: policy, implied: policy, no_po: gl_coding, skipped: policy }
+
+  - id: gl_coding
+    agent: po_matching
+    action: suggest_gl
+    status_label: Coded (non-PO)
+    next: { coded: policy }
+
+  - id: policy
+    agent: policy
+    action: evaluate
+    status_label: Checked
+    next: { evaluated: decide }
+
+  - id: decide
+    agent: decision
+    action: decide
+    status_label: Decided
+    next:
+      auto_approve: template_final
+      needs_review: template_draft
+      on_hold: hold
+      reject: rejected
+
+  - id: template_draft
+    agent: template
+    action: generate_draft
+    status_label: In review
+    next: { ok: review }
+
+  - id: review
+    hitl: true
+    status_label: In review
+    next:
+      approve: finalize
+      remark: reconcile
+      reject: rejected
+      request_info: hold
+
+  - id: reconcile
+    agent: reconciler
+    action: apply_remark
+    status_label: Applying your changes
+    next: { changes_applied: policy, needs_clarification: review }
+
+  - id: template_final
+    agent: template
+    action: generate_draft
+    status_label: Template generated
+    next: { ok: finalize }
+
+  - id: finalize
+    agent: template
+    action: finalize
+    status_label: Approved
+    next: { ok: notify_approved }
+
+  - id: notify_approved
+    agent: comms
+    action: notify
+    status_label: Approved, ready to export
+    next: { ok: "end:approved" }
+
+  - id: hold
+    agent: comms
+    action: draft_request
+    status_label: On hold, waiting for information
+    wait_for: info_received           # vendor portal upload or reviewer "resume"
+    resume_to: extract
+    next: { drafted: extract }
+
+  - id: rejected
+    agent: comms
+    action: draft_rejection
+    status_label: Rejected
+    next: { drafted: "end:rejected" }

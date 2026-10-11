@@ -1,0 +1,281 @@
+# Exact spec for synthetic master data and test documents.
+# backend/scripts/generate_fixtures.py turns this into data/master/*.csv and data/fixtures/*.pdf.
+# All companies are fictional. Amounts in USD. Keep the numbers here as the single source of truth:
+# tests assert against them.
+
+buyer:
+  name: Demo Co.
+  address: "100 Market Street, Austin, TX 78701"
+  ap_email: ap@democo.example
+
+gl_accounts:
+  - { code: "5100", name: Packaging Materials, category: cogs }
+  - { code: "5200", name: Freight In, category: cogs }
+  - { code: "6100", name: Facilities Maintenance, category: opex }
+  - { code: "6200", name: Office Supplies, category: opex }
+  - { code: "6210", name: Office Furniture, category: opex }
+  - { code: "6400", name: Software Subscriptions, category: opex }
+  - { code: "6410", name: Software Support, category: opex }
+  - { code: "6500", name: Professional Services, category: opex }
+  - { code: "6600", name: Printing and Marketing, category: opex }
+
+vendors:
+  - { code: V001, legal_name: Acme Office Supplies Inc, tax_id: "12-3456789", email_domain: acme-office.example, bank_last4: "4321", category: supplies, default_gl: "6200", status: approved }
+  - { code: V002, legal_name: Brightline Software Inc, tax_id: "23-4567890", email_domain: brightline.example, bank_last4: "5566", category: software, default_gl: "6400", status: approved }
+  - { code: V003, legal_name: Coastal Logistics LLC, tax_id: "34-5678901", email_domain: coastallogistics.example, bank_last4: "1122", category: freight, default_gl: "5200", status: approved }
+  - { code: V004, legal_name: Delta Facilities Services, tax_id: "45-6789012", email_domain: deltafacilities.example, bank_last4: "3344", category: facilities, default_gl: "6100", status: approved, non_po_allowed: true }
+  - { code: V005, legal_name: Evergreen Packaging Co, tax_id: "56-7890123", email_domain: evergreenpack.example, bank_last4: "7788", category: packaging, default_gl: "5100", status: approved }
+  - { code: V006, legal_name: Fulcrum Consulting Group, tax_id: "67-8901234", email_domain: fulcrumcg.example, bank_last4: "9001", category: services, default_gl: "6500", status: approved }
+  - { code: V007, legal_name: Granite IT Hardware, tax_id: "78-1234560", email_domain: granite-it.example, bank_last4: "2468", category: hardware, default_gl: "6200", status: inactive }
+  # NOT in master (unknown vendor scenario): Nova Print Studio LLC, tax 78-9012345, novaprint.example, bank 6070
+
+purchase_orders:
+  - po_number: PO-1001
+    vendor: V002
+    lines:
+      - { line_no: 1, description: "Brightline Analytics licence (annual)", qty: 100, unit_price: 100.00, gl_code: "6400" }
+  - po_number: PO-1002
+    vendor: V001
+    lines:
+      - { line_no: 1, description: "Copy paper A4 80gsm, ream", qty: 50, unit_price: 6.50, gl_code: "6200" }
+      - { line_no: 2, description: "Toner cartridge BL-720", qty: 20, unit_price: 82.00, gl_code: "6200" }
+      - { line_no: 3, description: "Ergonomic task chair", qty: 10, unit_price: 245.00, gl_code: "6210" }
+  - po_number: PO-1003
+    vendor: V003
+    lines:
+      - { line_no: 1, description: "Freight LTL shipment Chicago to Dallas", qty: 4, unit_price: 1250.00, gl_code: "5200" }
+  - po_number: PO-1004
+    vendor: V006
+    notes: "Raised from quote Q-77"
+    lines:
+      - { line_no: 1, description: "Process improvement consulting (per hour)", qty: 40, unit_price: 150.00, gl_code: "6500" }
+  - po_number: PO-1005
+    vendor: V005
+    lines:
+      - { line_no: 1, description: "Corrugated shipping box 12x10x8", qty: 2000, unit_price: 1.10, gl_code: "5100" }
+  - po_number: PO-1006
+    vendor: V006
+    lines:
+      - { line_no: 1, description: "Leadership workshop (1 day)", qty: 1, unit_price: 2500.00, gl_code: "6500" }
+  - po_number: PO-1007
+    vendor: V001
+    lines:
+      - { line_no: 1, description: "Whiteboard markers, box of 12", qty: 30, unit_price: 12.00, gl_code: "6200" }
+
+grns:
+  - { po_number: PO-1002, line_no: 1, qty_received: 50 }
+  - { po_number: PO-1002, line_no: 2, qty_received: 20 }
+  - { po_number: PO-1002, line_no: 3, qty_received: 10 }
+  - { po_number: PO-1003, line_no: 1, qty_received: 3 }
+  - { po_number: PO-1005, line_no: 1, qty_received: 2000 }
+  - { po_number: PO-1007, line_no: 1, qty_received: 30 }
+
+# Recommended demo run order (balances depend on it):
+run_order: [S01_happy, S02a_split_part1, S02b_split_part2, S03_implied_po, S04_duplicate_scan, S05_unknown_vendor, S06_bank_change, S07_non_po, S08_price_variance, S10_bundle, S09_missing_fields]
+
+scenarios:
+  - id: S01_happy
+    title: Clean PDF, exact 3-line PO match
+    file: S01_acme_INV-A-2207.pdf
+    render: clean
+    expect: { decision: auto_approve }
+    invoice:
+      vendor: V001
+      invoice_number: INV-A-2207
+      invoice_date: "2026-10-02"
+      due_date: "2026-11-01"
+      terms: Net 30
+      po_reference: PO-1002
+      lines:
+        - { description: "Copy paper A4 80gsm, ream", qty: 50, unit_price: 6.50 }
+        - { description: "Toner cartridge BL-720", qty: 20, unit_price: 82.00 }
+        - { description: "Ergonomic task chair", qty: 10, unit_price: 245.00 }
+      tax_rate_pct: 8.25          # subtotal 4415.00, tax 364.24, total 4779.24
+      bank_last4: "4321"
+
+  - id: S02a_split_part1
+    title: First of two invoices against one PO
+    file: S02a_brightline_BL-0091.pdf
+    render: clean
+    expect: { decision: auto_approve, po_remaining_after: 4000.00 }
+    invoice:
+      vendor: V002
+      invoice_number: BL-0091
+      invoice_date: "2026-09-15"
+      due_date: "2026-10-15"
+      terms: Net 30
+      po_reference: PO-1001
+      lines:
+        - { description: "Brightline Analytics licence (annual) - tranche 1", qty: 60, unit_price: 100.00 }
+      tax_rate_pct: 0
+      bank_last4: "5566"
+
+  - id: S02b_split_part2
+    title: Second split invoice exceeds remaining PO balance and adds an unordered line
+    file: S02b_brightline_BL-0107.pdf
+    render: clean
+    expect: { decision: needs_review, failed_rules: [po_balance, unmatched_lines] }
+    demo_remark: "PO was amended to $10,500 by procurement. Accept the premium support line and code it to 6410."
+    invoice:
+      vendor: V002
+      invoice_number: BL-0107
+      invoice_date: "2026-10-05"
+      due_date: "2026-11-04"
+      terms: Net 30
+      po_reference: PO-1001
+      lines:
+        - { description: "Brightline Analytics licence (annual) - tranche 2", qty: 40, unit_price: 100.00 }
+        - { description: "Premium support add-on", qty: 1, unit_price: 300.00 }
+      tax_rate_pct: 0            # subtotal 4300.00 vs remaining 4000.00 -> +7.5%
+      bank_last4: "5566"
+
+  - id: S03_implied_po
+    title: No PO number, only a quote reference
+    file: S03_fulcrum_FCG-311.pdf
+    render: clean
+    expect: { decision: needs_review, implied_po: PO-1004, failed_rules: [implied_po_requires_review] }
+    invoice:
+      vendor: V006
+      invoice_number: FCG-311
+      invoice_date: "2026-10-03"
+      due_date: "2026-11-02"
+      terms: Net 30
+      po_reference: null
+      other_references: ["As per our quote Q-77"]
+      lines:
+        - { description: "Process improvement consulting - September", qty: 40, unit_price: 150.00, uom: hrs }
+      tax_rate_pct: 0
+      bank_last4: "9001"
+
+  - id: S04_duplicate_scan
+    title: Same invoice as S01 re-sent as a skewed scan with a reformatted number
+    file: S04_acme_scan_duplicate.pdf
+    render: scan                 # rasterise S01 layout at 120 dpi, rotate 0.8 deg, add noise, no text layer
+    copy_of: S01_happy
+    override: { invoice_number_printed: "INV A2207" }
+    expect: { decision: reject, failed_rules: [duplicate_exact], duplicate_of: S01_happy }
+
+  - id: S05_unknown_vendor
+    title: Vendor not in master, no PO -> onboarding mini-flow
+    file: S05_novaprint_NPS-0042.pdf
+    render: clean
+    expect: { decision: on_hold, vendor_status: new_vendor, after_onboarding: { decision: needs_review, gl: "6600" } }
+    new_vendor: { legal_name: Nova Print Studio LLC, tax_id: "78-9012345", email_domain: novaprint.example, bank_last4: "6070", category: printing }
+    supporting_files:
+      - { file: S05_novaprint_W9.pdf, kind: tax_form }
+      - { file: S05_novaprint_bank_letter.pdf, kind: bank_letter, account_holder: Nova Print Studio LLC, bank_last4: "6070" }
+    invoice:
+      vendor_name_printed: Nova Print Studio LLC
+      invoice_number: NPS-0042
+      invoice_date: "2026-10-06"
+      due_date: "2026-10-21"
+      terms: Net 15
+      po_reference: null
+      lines:
+        - { description: "Trade show banner 6x3 ft", qty: 3, unit_price: 260.00 }
+        - { description: "Brochure printing, tri-fold", qty: 1000, unit_price: 0.40 }
+      tax_rate_pct: 8.25          # subtotal 1180.00, tax 97.35, total 1277.35
+      bank_last4: "6070"
+
+  - id: S06_bank_change
+    title: Known vendor, valid PO, but new bank account on the invoice
+    file: S06_evergreen_EP-5531.pdf
+    render: clean
+    expect: { decision: on_hold, failed_rules: [bank_details_match] }
+    invoice:
+      vendor: V005
+      invoice_number: EP-5531
+      invoice_date: "2026-10-04"
+      due_date: "2026-11-03"
+      terms: Net 30
+      po_reference: PO-1005
+      lines:
+        - { description: "Corrugated shipping box 12x10x8", qty: 2000, unit_price: 1.10 }
+      tax_rate_pct: 8.25          # subtotal 2200.00, tax 181.50, total 2381.50
+      bank_last4: "9910"
+      footer_note: "Please note our NEW bank details below, effective immediately."
+
+  - id: S07_non_po
+    title: Legitimate non-PO service invoice
+    file: S07_delta_DF-2026-10.pdf
+    render: clean
+    expect: { decision: needs_review, failed_rules: [non_po_requires_review], gl: "6100" }
+    invoice:
+      vendor: V004
+      invoice_number: DF-2026-10
+      invoice_date: "2026-10-01"
+      due_date: "2026-10-31"
+      terms: Net 30
+      po_reference: null
+      lines:
+        - { description: "Monthly HVAC maintenance - October", qty: 1, unit_price: 1850.00 }
+        - { description: "Air filter replacement", qty: 6, unit_price: 50.00 }
+      tax_rate_pct: 0
+      bank_last4: "3344"
+
+  - id: S08_price_variance
+    title: Unit price above PO beyond tolerance
+    file: S08_coastal_CL-778.pdf
+    render: clean
+    expect: { decision: needs_review, failed_rules: [price_tolerance] }
+    invoice:
+      vendor: V003
+      invoice_number: CL-778
+      invoice_date: "2026-10-07"
+      due_date: "2026-11-06"
+      terms: Net 30
+      po_reference: PO-1003
+      lines:
+        - { description: "LTL freight Chicago-Dallas, fuel surcharge incl.", qty: 2, unit_price: 1310.00 }
+      tax_rate_pct: 0             # +4.8% and +$60/unit vs PO 1250.00
+      bank_last4: "1122"
+
+  - id: S09_missing_fields
+    title: Poor scan with no invoice number or date
+    file: S09_coastal_scan_missing.pdf
+    render: scan
+    expect: { decision: on_hold, failed_rules: [required_fields] }
+    invoice:
+      vendor: V003
+      invoice_number: null
+      invoice_date: null
+      po_reference: PO-1003
+      lines:
+        - { description: "Freight LTL shipment Chicago to Dallas", qty: 1, unit_price: 1250.00 }
+      tax_rate_pct: 0
+      bank_last4: "1122"
+
+  - id: S10_bundle
+    title: One PDF containing two invoices from different vendors
+    file: S10_bundle_two_invoices.pdf
+    render: clean
+    expect: { child_cases: 2, decisions: [auto_approve, auto_approve] }
+    pages:
+      - invoice:
+          vendor: V001
+          invoice_number: INV-A-2240
+          invoice_date: "2026-10-08"
+          due_date: "2026-11-07"
+          terms: Net 30
+          po_reference: PO-1007
+          lines: [ { description: "Whiteboard markers, box of 12", qty: 30, unit_price: 12.00 } ]
+          tax_rate_pct: 8.25      # subtotal 360.00, tax 29.70, total 389.70
+          bank_last4: "4321"
+      - invoice:
+          vendor: V003
+          invoice_number: CL-781
+          invoice_date: "2026-10-08"
+          due_date: "2026-11-07"
+          terms: Net 30
+          po_reference: PO-1003
+          lines: [ { description: "Freight LTL shipment Chicago to Dallas", qty: 1, unit_price: 1250.00 } ]
+          tax_rate_pct: 0
+          bank_last4: "1122"
+
+# Optional: seeded history so the dashboard is not empty on first open.
+# Generated as already-decided cases flagged seed=true; the UI must label them "seeded demo data".
+seed_history:
+  enabled: true
+  cases: 40
+  days_back: 21
+  decision_mix: { auto_approve: 0.55, needs_review: 0.30, on_hold: 0.10, reject: 0.05 }

@@ -1,0 +1,24 @@
+id: po_matching
+name: PO matching
+description: Finds the PO (explicit or implied), pairs invoice lines to PO lines and GRNs, tracks split-invoice balance; codes non-PO invoices.
+kind: hybrid
+enabled: true
+handler: app.agents.po_matching:POMatchingAgent
+actions:
+  match:
+    outcomes: [matched, implied, no_po]
+    prompt: prompts/po_inference.md
+  suggest_gl:
+    outcomes: [coded]
+    prompt: prompts/gl_coding.md
+model:
+  reasoning_effort: low
+  max_output_tokens: 4000
+params:
+  candidate_weights: { amount: 0.4, lines: 0.4, date: 0.2 }
+  implied_min_score: 0.85
+  implied_min_gap: 0.15
+  date_window_days: 120
+  use_grn: true
+retries: 1
+timeout_s: 90
