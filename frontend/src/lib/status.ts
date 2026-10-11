@@ -168,7 +168,68 @@ const BALANCE: Record<string, StatusDef> = {
   over: { label: "Over balance", tone: "rose" },
 };
 
-export type StatusKind = "case" | "decision" | "stage" | "rule" | "severity" | "review_action" | "balance";
+/** Vendor master status (vendors.status). */
+const VENDOR: Record<string, StatusDef> = {
+  approved: { label: "Approved", tone: "emerald" },
+  pending_docs: { label: "Pending documents", tone: "sky" },
+  rejected: { label: "Rejected", tone: "rose" },
+  inactive: { label: "Inactive", tone: "slate" },
+};
+
+/** Vendor request (portal link) status. */
+const REQUEST: Record<string, StatusDef> = {
+  open: { label: "Waiting for vendor", tone: "sky" },
+  submitted: { label: "Docs received", tone: "violet" }, // being checked
+  approved: { label: "Approved", tone: "emerald" },
+  rejected: { label: "Rejected", tone: "rose" },
+  closed: { label: "Closed", tone: "slate" },
+};
+
+/** Verification check on an uploaded vendor document. */
+const CHECK: Record<string, StatusDef> = {
+  pass: { label: "Pass", tone: "emerald" },
+  fail: { label: "Fail", tone: "rose" },
+  manual: { label: "Check by eye", tone: "amber" },
+};
+
+/** PO consumption row state; also the PO bar segments (remaining = what is left). */
+const CONSUMPTION: Record<string, StatusDef> = {
+  consumed: { label: "Consumed", tone: "indigo" },
+  reserved: { label: "Reserved", tone: "violet" },
+  released: { label: "Released", tone: "slate" },
+  remaining: { label: "Remaining", tone: "slate" },
+  over: { label: "Over PO", tone: "rose" },
+};
+
+/** Approved library: whether the invoice has gone to the ERP yet. */
+const EXPORT: Record<string, StatusDef> = {
+  approved: { label: "Not exported", tone: "slate" },
+  exported: { label: "Exported", tone: "teal" },
+};
+
+/** Agent Studio: where a config file's running content comes from. */
+const CONFIG: Record<string, StatusDef> = {
+  file: { label: "From file", tone: "slate" },
+  override: { label: "Edited in Studio", tone: "indigo" },
+  invalid: { label: "Invalid", tone: "rose" },
+  valid: { label: "Valid", tone: "emerald" },
+  unsaved: { label: "Unsaved", tone: "amber" },
+};
+
+export type StatusKind =
+  | "case"
+  | "decision"
+  | "stage"
+  | "rule"
+  | "severity"
+  | "review_action"
+  | "balance"
+  | "vendor"
+  | "request"
+  | "check"
+  | "consumption"
+  | "config"
+  | "export";
 const KINDS: Record<StatusKind, Record<string, StatusDef>> = {
   case: CASE,
   decision: DECISION,
@@ -177,6 +238,12 @@ const KINDS: Record<StatusKind, Record<string, StatusDef>> = {
   severity: SEVERITY,
   review_action: REVIEW_ACTION,
   balance: BALANCE,
+  vendor: VENDOR,
+  request: REQUEST,
+  check: CHECK,
+  consumption: CONSUMPTION,
+  config: CONFIG,
+  export: EXPORT,
 };
 
 function humanise(value: string): string {

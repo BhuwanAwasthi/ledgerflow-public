@@ -122,6 +122,7 @@ class CaseOut(_ORM):
     approved_by: str | None = None
     approved_at: datetime | None = None
     exported_at: datetime | None = None
+    latest_template_version: int | None = None  # newest ERP template (per-row download in the library)
 
 
 class CaseDetailOut(CaseOut):
@@ -258,6 +259,10 @@ class POConsumptionOut(_ORM):
     amount: Decimal
     qty: Decimal | None
     state: str
+    case_ref: str | None = None
+    case_status: str | None = None
+    invoice_number: str | None = None
+    split_from: str | None = None  # parent case ref when the invoice came from a split bundle
 
 
 class POAmendmentOut(_ORM):
@@ -449,3 +454,81 @@ class WorkspaceOut(BaseModel):
     draft: dict[str, Any] | None
     duplicates: list[DuplicateLinkOut]
     reviewable: bool
+
+
+# ---------- Agent Studio ----------
+class ConfigFileOut(BaseModel):
+    path: str
+    kind: str  # agent | prompt | erp_profile | app | workflow | rules | document_types
+    overridden: bool  # an Agent Studio version is active (the YAML file is not what runs)
+    versions: int
+
+
+class ConfigVersionOut(BaseModel):
+    version: int
+    active: bool
+    author: str | None
+    created_at: datetime
+    content: str
+
+
+class ConfigFileDetailOut(BaseModel):
+    path: str
+    kind: str
+    content: str  # what runs: the active override, else the file
+    file_content: str | None  # the file in config/ (what "Reset to file" restores)
+    overridden: bool
+    active_version: int | None
+    versions: list[ConfigVersionOut]  # newest first
+
+
+class ConfigSaveIn(BaseModel):
+    content: str
+    author: str = "Admin"
+
+
+class ConfigSavedOut(ConfigFileDetailOut):
+    config_hash: str
+
+
+class ConfigValidateIn(BaseModel):
+    edits: dict[str, str]  # path -> content, checked together with every other file
+
+
+class ConfigValidateOut(BaseModel):
+    ok: bool
+    errors: list[str]
+
+
+class AgentStatOut(BaseModel):
+    runs: int
+    failed: int
+    avg_latency_ms: int | None
+    avg_cost_usd: float | None
+    tokens: int
+
+
+class TestAgentIn(BaseModel):
+    agent: str
+    action: str
+    case_id: int
+    edits: dict[str, str] = Field(default_factory=dict)  # unsaved editor content to test with (path -> content)
+
+
+class TestAgentOut(BaseModel):
+    ok: bool
+    agent: str
+    action: str
+    case_id: int
+    case_ref: str | None
+    stage_id: str
+    config_hash: str
+    error: str | None = None
+    outcome: str | None = None
+    data: dict[str, Any] | None = None
+    reasoning: list[str] = []
+    confidence: float | None = None
+    metrics: dict[str, Any] = {}
+    progress: list[str] = []
+    storage_writes: list[str] = []  # files the agent would have written (kept in memory, discarded)
+    duration_ms: int

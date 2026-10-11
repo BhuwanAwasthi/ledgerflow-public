@@ -1,6 +1,53 @@
 {
   "components": {
     "schemas": {
+      "AgentStatOut": {
+        "properties": {
+          "avg_cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Cost Usd"
+          },
+          "avg_latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Latency Ms"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "runs",
+          "failed",
+          "avg_latency_ms",
+          "avg_cost_usd",
+          "tokens"
+        ],
+        "title": "AgentStatOut",
+        "type": "object"
+      },
       "Body_create_api_cases_post": {
         "properties": {
           "files": {
@@ -248,6 +295,17 @@
               }
             ],
             "title": "Invoice Number"
+          },
+          "latest_template_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Template Version"
           },
           "note": {
             "anyOf": [
@@ -608,6 +666,17 @@
             ],
             "title": "Invoice Number"
           },
+          "latest_template_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Template Version"
+          },
           "note": {
             "anyOf": [
               {
@@ -852,6 +921,255 @@
           "reasons"
         ],
         "title": "CellFlagOut",
+        "type": "object"
+      },
+      "ConfigFileDetailOut": {
+        "properties": {
+          "active_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Version"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "file_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Content"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "overridden": {
+            "title": "Overridden",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ConfigVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "path",
+          "kind",
+          "content",
+          "file_content",
+          "overridden",
+          "active_version",
+          "versions"
+        ],
+        "title": "ConfigFileDetailOut",
+        "type": "object"
+      },
+      "ConfigFileOut": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "overridden": {
+            "title": "Overridden",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "versions": {
+            "title": "Versions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "kind",
+          "overridden",
+          "versions"
+        ],
+        "title": "ConfigFileOut",
+        "type": "object"
+      },
+      "ConfigSaveIn": {
+        "properties": {
+          "author": {
+            "default": "Admin",
+            "title": "Author",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ConfigSaveIn",
+        "type": "object"
+      },
+      "ConfigSavedOut": {
+        "properties": {
+          "active_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Version"
+          },
+          "config_hash": {
+            "title": "Config Hash",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "file_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Content"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "overridden": {
+            "title": "Overridden",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ConfigVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "path",
+          "kind",
+          "content",
+          "file_content",
+          "overridden",
+          "active_version",
+          "versions",
+          "config_hash"
+        ],
+        "title": "ConfigSavedOut",
+        "type": "object"
+      },
+      "ConfigValidateIn": {
+        "properties": {
+          "edits": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Edits",
+            "type": "object"
+          }
+        },
+        "required": [
+          "edits"
+        ],
+        "title": "ConfigValidateIn",
+        "type": "object"
+      },
+      "ConfigValidateOut": {
+        "properties": {
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "errors"
+        ],
+        "title": "ConfigValidateOut",
+        "type": "object"
+      },
+      "ConfigVersionOut": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "active",
+          "author",
+          "created_at",
+          "content"
+        ],
+        "title": "ConfigVersionOut",
         "type": "object"
       },
       "DashboardKpisOut": {
@@ -1819,9 +2137,42 @@
             "title": "Case Id",
             "type": "integer"
           },
+          "case_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Ref"
+          },
+          "case_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Status"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
           },
           "po_line_id": {
             "anyOf": [
@@ -1844,6 +2195,17 @@
               }
             ],
             "title": "Qty"
+          },
+          "split_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Split From"
           },
           "state": {
             "title": "State",
@@ -2794,6 +3156,166 @@
           "created_by"
         ],
         "title": "TemplateVersionOut",
+        "type": "object"
+      },
+      "TestAgentIn": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "case_id": {
+            "title": "Case Id",
+            "type": "integer"
+          },
+          "edits": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Edits",
+            "type": "object"
+          }
+        },
+        "required": [
+          "agent",
+          "action",
+          "case_id"
+        ],
+        "title": "TestAgentIn",
+        "type": "object"
+      },
+      "TestAgentOut": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "case_id": {
+            "title": "Case Id",
+            "type": "integer"
+          },
+          "case_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Ref"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "config_hash": {
+            "title": "Config Hash",
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Metrics",
+            "type": "object"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "progress": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Progress",
+            "type": "array"
+          },
+          "reasoning": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasoning",
+            "type": "array"
+          },
+          "stage_id": {
+            "title": "Stage Id",
+            "type": "string"
+          },
+          "storage_writes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Storage Writes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ok",
+          "agent",
+          "action",
+          "case_id",
+          "case_ref",
+          "stage_id",
+          "config_hash",
+          "duration_ms"
+        ],
+        "title": "TestAgentOut",
         "type": "object"
       },
       "ValidationError": {
@@ -4176,6 +4698,275 @@
         "summary": "Get Config",
         "tags": [
           "system",
+          "config"
+        ]
+      }
+    },
+    "/api/config/agent-stats": {
+      "get": {
+        "description": "Runs, failures, average latency and cost per agent (Agent Studio list).",
+        "operationId": "stats_api_config_agent_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/AgentStatOut"
+                  },
+                  "title": "Response Stats Api Config Agent Stats Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stats",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/api/config/files": {
+      "get": {
+        "operationId": "files_api_config_files_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigFileOut"
+                  },
+                  "title": "Response Files Api Config Files Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Files",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/api/config/test-agent": {
+      "post": {
+        "description": "Run one agent action on a case with the current config (plus unsaved `edits`). Dry run: the agent\nworks on a throwaway copy of the data, so nothing it writes is kept.",
+        "operationId": "test_agent_api_config_test_agent_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestAgentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestAgentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Agent",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/api/config/validate": {
+      "post": {
+        "description": "Check edits against the whole config without saving (inline errors while typing).",
+        "operationId": "validate_api_config_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigValidateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigValidateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/api/config/{path}": {
+      "delete": {
+        "description": "Reset to file: deactivate the overrides for this path (their history is kept). Refused when the file\nwould not validate together with the other active overrides.",
+        "operationId": "reset_file_api_config__path__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigSavedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset File",
+        "tags": [
+          "config"
+        ]
+      },
+      "get": {
+        "operationId": "get_file_api_config__path__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigFileDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get File",
+        "tags": [
+          "config"
+        ]
+      },
+      "put": {
+        "description": "Validate the whole config with this edit; only a valid config is stored (as a new active version).\nNew cases run on it; cases already started keep the snapshot they began with.",
+        "operationId": "put_file_api_config__path__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigSaveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigSavedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put File",
+        "tags": [
           "config"
         ]
       }

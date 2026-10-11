@@ -44,6 +44,9 @@ def case_out(s: Session, orch: Orchestrator, case: Case) -> dict[str, Any]:
     if case.vendor_id is not None:
         vendor = s.get(Vendor, case.vendor_id)
         out["vendor_name"] = vendor.legal_name if vendor else None
+    out["latest_template_version"] = s.scalar(
+        select(func.max(TemplateVersion.version)).where(TemplateVersion.case_id == case.id)
+    )
     stage_id = case.current_stage
     if stage_id and not stage_id.startswith("end:") and case.config_snapshot:
         try:

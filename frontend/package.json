@@ -12,6 +12,9 @@
     "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
+    "@codemirror/lang-markdown": "6.3.1",
+    "@codemirror/lang-yaml": "6.1.1",
+    "@codemirror/lint": "6.8.4",
     "@fontsource-variable/inter": "5.1.0",
     "@radix-ui/react-collapsible": "1.1.1",
     "@radix-ui/react-dialog": "1.1.2",
@@ -22,6 +25,8 @@
     "@radix-ui/react-tooltip": "1.1.4",
     "@tanstack/react-query": "5.62.0",
     "@tanstack/react-table": "8.20.5",
+    "@uiw/react-codemirror": "4.23.6",
+    "@xyflow/react": "12.3.5",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.0.4",
@@ -33,7 +38,8 @@
     "react-router-dom": "6.28.0",
     "recharts": "2.13.3",
     "sonner": "1.7.0",
-    "tailwind-merge": "2.5.4"
+    "tailwind-merge": "2.5.4",
+    "yaml": "2.6.1"
   },
   "devDependencies": {
     "@types/node": "22.9.0",

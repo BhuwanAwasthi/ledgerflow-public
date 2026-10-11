@@ -19,6 +19,13 @@ const ScenariosPage = lazy(() => import("@/pages/ScenariosPage"));
 const CasesPage = lazy(() => import("@/pages/CasesPage"));
 const ReviewPage = lazy(() => import("@/pages/ReviewPage"));
 const ComingSoonPage = lazy(() => import("@/pages/ComingSoonPage"));
+const LibraryPage = lazy(() => import("@/pages/LibraryPage"));
+const VendorsPage = lazy(() => import("@/pages/VendorsPage").then((m) => ({ default: m.VendorsPage })));
+const VendorDetailPage = lazy(() => import("@/pages/VendorsPage").then((m) => ({ default: m.VendorDetailPage })));
+const POsPage = lazy(() => import("@/pages/POsPage").then((m) => ({ default: m.POsPage })));
+const PODetailPage = lazy(() => import("@/pages/POsPage").then((m) => ({ default: m.PODetailPage })));
+const StudioPage = lazy(() => import("@/pages/StudioPage"));
+const PortalPage = lazy(() => import("@/pages/PortalPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -62,6 +69,15 @@ const soon = (title: string, phase: string, description: string) => <ComingSoonP
 
 const router = createBrowserRouter([
   {
+    // public vendor upload page: no app shell, no role switcher
+    path: "/portal/:token",
+    element: (
+      <Suspense fallback={null}>
+        <PortalPage />
+      </Suspense>
+    ),
+  },
+  {
     element: (
       <AppShell>
         <Suspense fallback={<PageFallback />}>
@@ -79,10 +95,12 @@ const router = createBrowserRouter([
       { path: "/cases/:id", element: <Navigate to="live" replace /> },
       { path: "/cases/:id/review", element: <ReviewPage /> },
       { path: "/scenarios", element: <ScenariosPage /> },
-      { path: "/library", element: soon("Approved library", "F3", "Approved invoices with single, ZIP and batch ERP export.") },
-      { path: "/vendors", element: soon("Vendors", "F3", "Vendor master, onboarding requests and verification checks.") },
-      { path: "/pos", element: soon("Purchase orders", "F3", "PO consumption bars and linked invoices.") },
-      { path: "/studio", element: soon("Agent Studio", "F3", "Edit agents, prompts, rules and the workflow with validation and versions.") },
+      { path: "/library", element: <LibraryPage /> },
+      { path: "/vendors", element: <VendorsPage /> },
+      { path: "/vendors/:id", element: <VendorDetailPage /> },
+      { path: "/pos", element: <POsPage /> },
+      { path: "/pos/:id", element: <PODetailPage /> },
+      { path: "/studio", element: <StudioPage /> },
       { path: "*", element: soon("Page not found", "—", "That address doesn't match a screen.") },
     ],
   },

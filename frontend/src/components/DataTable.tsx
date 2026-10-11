@@ -165,16 +165,15 @@ export function DataTable<T>({
                     <th
                       key={h.id}
                       className={cn(
-                        "sticky top-0 z-10 border-b bg-muted/80 px-3 py-2 text-left text-xs font-medium text-muted-foreground backdrop-blur",
+                        "sticky top-0 z-10 border-b bg-muted px-3 py-2 text-left text-xs font-medium text-muted-foreground",
                         meta?.align === "right" && "text-right",
                       )}
                       style={{ width: h.getSize() !== 150 ? h.getSize() : undefined }}
                     >
-                      {h.isPlaceholder ? null : (
-                        <button
-                          className={cn("inline-flex items-center gap-1 hover:text-foreground", !h.column.getCanSort() && "pointer-events-none")}
-                          onClick={h.column.getToggleSortingHandler()}
-                        >
+                      {h.isPlaceholder ? null : !h.column.getCanSort() ? (
+                        <span className="inline-flex items-center gap-1">{flexRender(h.column.columnDef.header, h.getContext())}</span>
+                      ) : (
+                        <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={h.column.getToggleSortingHandler()}>
                           {flexRender(h.column.columnDef.header, h.getContext())}
                           {sorted === "asc" && <ArrowUp className="size-3" />}
                           {sorted === "desc" && <ArrowDown className="size-3" />}

@@ -1,4 +1,4 @@
-import { forwardRef, type HTMLAttributes, type InputHTMLAttributes, type LabelHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { forwardRef, type HTMLAttributes, type InputHTMLAttributes, type LabelHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 export function Badge({ className, ...p }: HTMLAttributes<HTMLSpanElement>) {
@@ -72,5 +72,59 @@ export function Segmented<T extends string>({
         </button>
       ))}
     </div>
+  );
+}
+
+export function Checkbox({
+  checked,
+  indeterminate,
+  onChange,
+  label,
+  className,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <input
+      type="checkbox"
+      aria-label={label}
+      checked={checked}
+      ref={(el) => {
+        if (el) el.indeterminate = !!indeterminate && !checked;
+      }}
+      onChange={(e) => onChange(e.target.checked)}
+      onClick={(e) => e.stopPropagation()}
+      className={cn("size-4 cursor-pointer rounded border-input accent-primary align-middle", className)}
+    />
+  );
+}
+
+export function Select({ className, ...p }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return <select className={cn(field, "h-8 w-auto pr-8 text-[13px]", className)} {...p} />;
+}
+
+export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (on: boolean) => void; label: string; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(!checked);
+      }}
+      className={cn(
+        "relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+        checked ? "bg-primary" : "bg-muted-foreground/30",
+      )}
+    >
+      <span className={cn("inline-block size-3 rounded-full bg-white shadow transition-transform", checked ? "translate-x-3.5" : "translate-x-0.5")} />
+    </button>
   );
 }

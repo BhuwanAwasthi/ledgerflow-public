@@ -12,7 +12,9 @@ export interface AgentConf {
   description: string;
   kind: "llm" | "code" | "hybrid";
   enabled: boolean;
-  actions: Record<string, { outcomes: string[] }>;
+  actions: Record<string, { outcomes: string[]; prompt: string | null }>;
+  handler: string;
+  model: { deployment: string | null; reasoning_effort: string | null; max_output_tokens: number | null } | null;
 }
 
 export interface StageConf {
@@ -36,17 +38,36 @@ export interface UiConf {
 }
 
 export interface AppConf {
-  app: { name: string; tagline: string; company: string; case_ref_prefix: string; sla_hours: Record<string, number> };
+  app: {
+    name: string;
+    tagline: string;
+    company: string;
+    case_ref_prefix: string;
+    default_erp_profile: string;
+    sla_hours: Record<string, number>;
+  };
   features: Record<string, boolean>;
   limits: { max_upload_mb: number; max_pages_per_document: number };
   ui: UiConf;
 }
 
+export interface RuleConf {
+  id: string;
+  name: string;
+  enabled: boolean;
+  applies_to: string;
+  severity: string;
+  params: Record<string, unknown>;
+  explain: string;
+}
+
 export interface ResolvedConf {
   app: AppConf;
   workflow: { start: string; stages: StageConf[] };
-  rules: { currency: string; rules: { id: string; name: string; severity: string }[] };
+  rules: { currency: string; rules: RuleConf[] };
   agents: Record<string, AgentConf>;
+  document_types: { min_confidence: number; labels: { id: string; description: string; route: string }[] };
+  erp_profiles: Record<string, { id: string; name: string; file_format: string; grain: string }>;
   hash: string;
 }
 

@@ -17,6 +17,7 @@ from app.api.deps import get_orchestrator, get_session
 from app.api.schemas import (
     MasterImportOut,
     NotificationOut,
+    POConsumptionOut,
     PODetailOut,
     POOut,
     VendorActionIn,
@@ -110,7 +111,16 @@ def get_po(po_id: int, s: SessionDep) -> dict[str, Any]:
         raise HTTPException(404, f"PO {po_id} not found")
     out = _po_out(s, po)
     out["lines"] = s.scalars(select(POLine).where(POLine.po_id == po.id).order_by(POLine.line_no)).all()
-    out["consumption"] = s.scalars(select(POConsumption).where(POConsumption.po_id == po.id).order_by(POConsumption.id)).all()
+    rows = []
+    for c in s.scalars(select(POConsumption).where(POConsumption.po_id == po.id).order_by(POConsumption.id)).all():
+        row = POConsumptionOut.model_validate(c).model_dump()
+        case = s.get(Case, c.case_id)
+        if case is not None:
+            parent = s.get(Case, case.parent_case_id) if case.parent_case_id else None
+            row.update(case_ref=case.ref, case_status=case.status, invoice_number=case.invoice_number,
+                       split_from=parent.ref if parent else None)
+        rows.append(row)
+    out["consumption"] = rows
     out["amendments"] = s.scalars(select(POAmendment).where(POAmendment.po_id == po.id).order_by(POAmendment.id)).all()
     return out
 

@@ -249,6 +249,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/config/agent-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats
+         * @description Runs, failures, average latency and cost per agent (Agent Studio list).
+         */
+        get: operations["stats_api_config_agent_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/config/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Files */
+        get: operations["files_api_config_files_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/config/test-agent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Agent
+         * @description Run one agent action on a case with the current config (plus unsaved `edits`). Dry run: the agent
+         *     works on a throwaway copy of the data, so nothing it writes is kept.
+         */
+        post: operations["test_agent_api_config_test_agent_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/config/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate
+         * @description Check edits against the whole config without saving (inline errors while typing).
+         */
+        post: operations["validate_api_config_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/config/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get File */
+        get: operations["get_file_api_config__path__get"];
+        /**
+         * Put File
+         * @description Validate the whole config with this edit; only a valid config is stored (as a new active version).
+         *     New cases run on it; cases already started keep the snapshot they began with.
+         */
+        put: operations["put_file_api_config__path__put"];
+        post?: never;
+        /**
+         * Reset File
+         * @description Reset to file: deactivate the overrides for this path (their history is kept). Refused when the file
+         *     would not validate together with the other active overrides.
+         */
+        delete: operations["reset_file_api_config__path__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/metrics": {
         parameters: {
             query?: never;
@@ -593,6 +698,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AgentStatOut */
+        AgentStatOut: {
+            /** Avg Cost Usd */
+            avg_cost_usd: number | null;
+            /** Avg Latency Ms */
+            avg_latency_ms: number | null;
+            /** Failed */
+            failed: number;
+            /** Runs */
+            runs: number;
+            /** Tokens */
+            tokens: number;
+        };
         /** Body_create_api_cases_post */
         Body_create_api_cases_post: {
             /**
@@ -664,6 +782,8 @@ export interface components {
             invoice_date?: string | null;
             /** Invoice Number */
             invoice_number?: string | null;
+            /** Latest Template Version */
+            latest_template_version?: number | null;
             /** Note */
             note: string | null;
             /** Parent Case Id */
@@ -749,6 +869,8 @@ export interface components {
             invoice_date?: string | null;
             /** Invoice Number */
             invoice_number?: string | null;
+            /** Latest Template Version */
+            latest_template_version?: number | null;
             /** Note */
             note: string | null;
             /** Parent Case Id */
@@ -816,6 +938,93 @@ export interface components {
             reasons: string[];
             /** Row */
             row: number;
+        };
+        /** ConfigFileDetailOut */
+        ConfigFileDetailOut: {
+            /** Active Version */
+            active_version: number | null;
+            /** Content */
+            content: string;
+            /** File Content */
+            file_content: string | null;
+            /** Kind */
+            kind: string;
+            /** Overridden */
+            overridden: boolean;
+            /** Path */
+            path: string;
+            /** Versions */
+            versions: components["schemas"]["ConfigVersionOut"][];
+        };
+        /** ConfigFileOut */
+        ConfigFileOut: {
+            /** Kind */
+            kind: string;
+            /** Overridden */
+            overridden: boolean;
+            /** Path */
+            path: string;
+            /** Versions */
+            versions: number;
+        };
+        /** ConfigSaveIn */
+        ConfigSaveIn: {
+            /**
+             * Author
+             * @default Admin
+             */
+            author: string;
+            /** Content */
+            content: string;
+        };
+        /** ConfigSavedOut */
+        ConfigSavedOut: {
+            /** Active Version */
+            active_version: number | null;
+            /** Config Hash */
+            config_hash: string;
+            /** Content */
+            content: string;
+            /** File Content */
+            file_content: string | null;
+            /** Kind */
+            kind: string;
+            /** Overridden */
+            overridden: boolean;
+            /** Path */
+            path: string;
+            /** Versions */
+            versions: components["schemas"]["ConfigVersionOut"][];
+        };
+        /** ConfigValidateIn */
+        ConfigValidateIn: {
+            /** Edits */
+            edits: {
+                [key: string]: string;
+            };
+        };
+        /** ConfigValidateOut */
+        ConfigValidateOut: {
+            /** Errors */
+            errors: string[];
+            /** Ok */
+            ok: boolean;
+        };
+        /** ConfigVersionOut */
+        ConfigVersionOut: {
+            /** Active */
+            active: boolean;
+            /** Author */
+            author: string | null;
+            /** Content */
+            content: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Version */
+            version: number;
         };
         /** DashboardKpisOut */
         DashboardKpisOut: {
@@ -1137,12 +1346,20 @@ export interface components {
             amount: string;
             /** Case Id */
             case_id: number;
+            /** Case Ref */
+            case_ref?: string | null;
+            /** Case Status */
+            case_status?: string | null;
             /** Id */
             id: number;
+            /** Invoice Number */
+            invoice_number?: string | null;
             /** Po Line Id */
             po_line_id: number | null;
             /** Qty */
             qty: string | null;
+            /** Split From */
+            split_from?: string | null;
             /** State */
             state: string;
         };
@@ -1463,6 +1680,70 @@ export interface components {
             status: string;
             /** Version */
             version: number;
+        };
+        /** TestAgentIn */
+        TestAgentIn: {
+            /** Action */
+            action: string;
+            /** Agent */
+            agent: string;
+            /** Case Id */
+            case_id: number;
+            /** Edits */
+            edits?: {
+                [key: string]: string;
+            };
+        };
+        /** TestAgentOut */
+        TestAgentOut: {
+            /** Action */
+            action: string;
+            /** Agent */
+            agent: string;
+            /** Case Id */
+            case_id: number;
+            /** Case Ref */
+            case_ref: string | null;
+            /** Confidence */
+            confidence?: number | null;
+            /** Config Hash */
+            config_hash: string;
+            /** Data */
+            data?: {
+                [key: string]: unknown;
+            } | null;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Error */
+            error?: string | null;
+            /**
+             * Metrics
+             * @default {}
+             */
+            metrics: {
+                [key: string]: unknown;
+            };
+            /** Ok */
+            ok: boolean;
+            /** Outcome */
+            outcome?: string | null;
+            /**
+             * Progress
+             * @default []
+             */
+            progress: string[];
+            /**
+             * Reasoning
+             * @default []
+             */
+            reasoning: string[];
+            /** Stage Id */
+            stage_id: string;
+            /**
+             * Storage Writes
+             * @default []
+             */
+            storage_writes: string[];
         };
         /** ValidationError */
         ValidationError: {
@@ -2098,6 +2379,211 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    stats_api_config_agent_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: components["schemas"]["AgentStatOut"];
+                    };
+                };
+            };
+        };
+    };
+    files_api_config_files_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigFileOut"][];
+                };
+            };
+        };
+    };
+    test_agent_api_config_test_agent_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestAgentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestAgentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_api_config_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigValidateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigValidateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_file_api_config__path__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigFileDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_file_api_config__path__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigSaveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigSavedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_file_api_config__path__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigSavedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
