@@ -16,6 +16,7 @@ options:
   # Once a case has been in human review, an auto_approve outcome is routed to template_draft -> review,
   # so a human always closes a case they touched (the remark loop never self-approves).
   sticky_review: true
+  sticky_review_redirect: { auto_approve: template_draft }   # outcome -> stage used instead, once reviewed
   # When a stage has wait_for, the run pauses after the stage's action completes;
   # the matching event resumes it at resume_to. Its `next` mapping is still required for validation.
 

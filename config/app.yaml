@@ -31,3 +31,4 @@ limits:
   render_dpi: 150
   pipeline_concurrency: 2
   stage_timeout_s: 180
+  max_stages_per_run: 100   # guard against a workflow loop that never pauses

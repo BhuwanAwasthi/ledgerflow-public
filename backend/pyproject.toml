@@ -1,0 +1,48 @@
+[project]
+name = "ledgerflow-backend"
+version = "0.1.0"
+description = "LedgerFlow AP invoice decision engine (API)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "sqlalchemy>=2.0.30",
+    "psycopg[binary]>=3.2",
+    "sse-starlette>=2.1",
+    "python-multipart>=0.0.9",
+    "pyyaml>=6.0",
+    "jinja2>=3.1",
+    "openai>=1.50",
+    "pymupdf>=1.24",
+    "pillow>=10.4",
+    "rapidfuzz>=3.9",
+    "openpyxl>=3.1",
+    "reportlab>=4.2",
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-m \"not live\""
+markers = ["live: hits Azure OpenAI (run with `make test-live`)"]
+filterwarnings = ["ignore:Dialect sqlite\\+pysqlite does \\*not\\* support Decimal objects natively"]
