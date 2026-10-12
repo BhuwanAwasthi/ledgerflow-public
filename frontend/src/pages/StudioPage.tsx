@@ -204,7 +204,7 @@ function StudioInner() {
     <div>
       <PageHeader
         title="Agent Studio"
-        description="Agents, prompts, rules and the workflow are config. Every edit is validated against the whole config before it is saved, versioned, and used by new cases. Adding an agent also needs a Python class (add-agent skill)."
+        description="Agents, prompts, rules and the workflow are config. Every edit is validated against the whole config before it is saved, versioned, and used by new cases. Adding an agent also needs a Python class in backend/app/agents/."
       />
       {cfgQ.error && <ErrorNote error={cfgQ.error} />}
       <Tabs value={tab} onValueChange={(v) => set("tab", v)}>

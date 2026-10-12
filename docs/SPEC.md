@@ -14,7 +14,7 @@ A vendor or employee submits invoices on a portal. Eleven configurable agents cl
 | The only paid service is the Azure OpenAI GPT-5.2 deployment | One LLM adapter (`backend/app/llm.py`); no other model or paid OCR API |
 | Free hosting | Frontend on Vercel Hobby (static Vite build), API on Render free web service, Postgres + file storage on Supabase free |
 | No email-sending API | Outputs are **downloads** (single, bulk ZIP, batch import file). Vendor queries are **drafts** with a `mailto:` link and a no-login vendor upload link |
-| Built in one day with Claude Code | The phased plan in `docs/PHASES.md`; every phase ends with a runnable check |
+| Built in one day | Phased build; every phase ends with a runnable check (ruff + pytest + typecheck + build) |
 | Configurable like the Power Automate Work Order system | Workflow, agents, prompts, rules, document types and ERP profiles are YAML or Markdown in `config/`, editable in the **Agent Studio** UI |
 
 Free-tier facts that shape the design (checked Oct 2026):
@@ -46,8 +46,8 @@ Principles:
 
 ```
 /
-├─ CLAUDE.md
-├─ docs/  SPEC.md  PHASES.md  DEMO_SCRIPT.md
+├─ README.md
+├─ docs/  SPEC.md  DECISIONS.md  DEPLOY.md  DEMO_SCRIPT.md
 ├─ config/
 │  ├─ app.yaml                # branding, feature flags, LLM pricing, limits
 │  ├─ workflow.yaml           # stage graph (Work Orders equivalent)
@@ -262,7 +262,7 @@ Global: command palette (Ctrl/Cmd+K: jump to a case by ref, run a scenario, open
 - p50 end-to-end under 90 s per single-page invoice on GPT-5.2 at low/medium effort.
 - Upload limit 15 MB per file, 8 pages per document (config).
 - All money as Decimal; display with currency.
-- No secrets in the repo. `.env` is gitignored and Claude Code is denied read access to it.
+- No secrets in the repo. `.env` is gitignored.
 - Structured JSON logs; each stage_event carries latency and tokens.
 - CORS allows the Vercel domain and localhost:5173.
 

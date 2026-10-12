@@ -63,7 +63,7 @@ def _known_paths(session: Session, config_dir: Path) -> tuple[dict[str, str], di
 
 
 def require_path(session: Session, config_dir: Path, path: str) -> tuple[dict[str, str], dict[str, str]]:
-    """Studio edits existing config files only (a new agent also needs a Python class: see add-agent)."""
+    """Studio edits existing config files only (a new agent also needs a Python class in app/agents/)."""
     files, overrides = _known_paths(session, config_dir)
     if path not in files and path not in overrides:
         raise StudioError(404, f"no config file '{path}'")
