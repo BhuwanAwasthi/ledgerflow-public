@@ -16,3 +16,6 @@ CLAUDE.md
 .claude/
 README_START_HERE.md
 docs/PHASES.md
+
+# Local copies of fixture PDFs for manual testing
+test_cases/

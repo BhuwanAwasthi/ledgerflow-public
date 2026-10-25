@@ -8,6 +8,8 @@ A vendor or employee submits invoices. Eleven configurable agents classify the d
 
 Built for the Zamp case study PS-1 (*Invoice processing: from PDF to decision*). It also includes a light vendor-onboarding flow (PS-2) as one of the edge cases.
 
+**New to the app?** The [User Guide](docs/USER_GUIDE.md) walks through every screen for submitters, reviewers, admins and vendors.
+
 | Dashboard | Live run |
 | --- | --- |
 | ![Dashboard](docs/screenshots/f1/dashboard-light.png) | ![Live run](docs/screenshots/f1/live-complete-light.png) |
@@ -184,7 +186,7 @@ backend/     FastAPI app: orchestrator, agents, rules engine, LLM adapter, expor
 frontend/    Vite + React SPA
 config/      workflow, agents, prompts, rules, document types, ERP profiles
 data/        scenarios.yaml, generated master CSVs and invoice fixtures
-docs/        SPEC.md (product spec), DECISIONS.md (design decisions), DEPLOY.md, DEMO_SCRIPT.md, screenshots
+docs/        USER_GUIDE.md, SPEC.md (product spec), DECISIONS.md (design decisions), DEPLOY.md, DEMO_SCRIPT.md, screenshots
 render.yaml  Render blueprint for the API
 ```
 
