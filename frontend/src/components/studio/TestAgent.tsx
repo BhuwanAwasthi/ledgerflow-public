@@ -120,7 +120,7 @@ export function TestAgent({ agent }: { agent: AgentConf }) {
           <Select value={chosen ?? ""} onChange={(e) => setCaseId(Number(e.target.value))} aria-label="Case" className="block min-w-[360px] max-w-[460px]">
             {(cases.data ?? []).map((c) => (
               <option key={c.id} value={c.id}>
-                {c.ref} · {c.vendor_name ?? c.submitter_name ?? "unknown vendor"} · {statusDef("case", c.status).label}
+                {c.ref}{c.is_sample ? " (sample)" : ""} · {c.vendor_name ?? c.submitter_name ?? "unknown vendor"} · {statusDef("case", c.status).label}
               </option>
             ))}
           </Select>

@@ -5,10 +5,11 @@
 Every user's workspace is seeded on first sign-in (app.baseline.Baseline.ensure_workspace) with the rows
 below, written through an owner-bound session so each row gets that user's owner_id:
 - master data from data/master/*.csv (vendors, POs, PO lines, GRNs, GL accounts)
-- seeded history (data/scenarios.yaml `seed_history`), so the dashboard has something to show on first
-  open: already-decided cases flagged `seed=true`, each with a short stage_event trail and its failed rule
-  rows. They never touch PO balances, so the live demo scenarios start from the exact numbers in
-  scenarios.yaml.
+- sample history (data/scenarios.yaml `seed_history`), so the dashboard has something to show on first
+  open: already-decided cases flagged `is_sample=true`, each with its failed rule rows and ONE summary
+  stage_event (the decision stage, carrying the whole run's latency, tokens and cost; no per-stage payloads).
+  That keeps a new workspace small (tests/test_seed.py measures it). They never touch PO balances, so the
+  live demo scenarios start from the exact numbers in scenarios.yaml.
 """
 
 from __future__ import annotations
@@ -160,7 +161,7 @@ def seed_history(s: Session, cfg: ResolvedConfig, sc: Scenarios, *, now: datetim
         created = now - timedelta(days=rng.uniform(0.3, spec.days_back), minutes=rng.randint(0, 59))
         total = money(rng.uniform(120, 9500))
         case = Case(
-            source="upload", seed=True,
+            source="upload", is_sample=True,
             submitter_name=vendor.legal_name, submitter_email=f"billing@{vendor.email_domain}",
             status=CaseStatus.rejected if decision == "reject" else CaseStatus.approved,
             current_stage="end:rejected" if decision == "reject" else "end:approved",
@@ -176,31 +177,34 @@ def seed_history(s: Session, cfg: ResolvedConfig, sc: Scenarios, *, now: datetim
             pool = rules_by_sev.get(DECISION_SEVERITY[decision], [])
             failed = rng.sample(pool, k=min(len(pool), 1 + (rng.random() < 0.25)))
         case.decision_summary = (
-            "Seeded demo data: auto-approved, every check passed." if not failed
-            else "Seeded demo data: " + "; ".join(r.name.lower() for r in failed) + " failed."
+            "Sample history: auto-approved, every check passed." if not failed
+            else "Sample history: " + "; ".join(r.name.lower() for r in failed) + " failed."
         )
         for r in failed:
             s.add(RuleResult(case_id=case.id, run_no=1, rule_id=r.id, status="fail", severity=r.severity,
-                             explanation=f"Seeded demo data: {r.name} failed.", evidence={"seed": True}))
+                             explanation=f"Sample history: {r.name} failed.", evidence={"sample": True}))
 
-        t = created
-        for seq, (stage_id, agent_id, action, outcome) in enumerate(path, start=1):
+        # one summary event per case: the decision stage, with the metrics of the whole (simulated) run.
+        # agent_id stays empty so Agent Studio's per-agent stats only count real runs.
+        latency = tokens_in = tokens_out = 0
+        for _stage_id, agent_id, action, _outcome in path:
             agent = cfg.agents.get(agent_id or "")
-            uses_llm = bool(agent and action and agent.actions[action].prompt)
-            latency = rng.randint(4000, 22000) if uses_llm else rng.randint(40, 600)
-            metrics: dict = {"latency_ms": latency, "cache_hit": False}
-            if uses_llm:
-                tin, tout = rng.randint(1500, 9000), rng.randint(200, 1800)
-                cost = (tin * pricing.get("input", 0.0) + tout * pricing.get("output", 0.0)) / 1_000_000
-                metrics.update(tokens_in=tin, tokens_out=tout, cost_usd=round(cost, 6))
-            end = t + timedelta(milliseconds=latency)
-            s.add(StageEvent(
-                case_id=case.id, run_no=1, seq=seq, stage_id=stage_id, agent_id=agent_id, action=action,
-                status=StageStatus.completed, outcome=decision if agent_id == "decision" else outcome,
-                input_summary={"seed": True}, output={"seed": True}, reasoning=["Seeded demo data."],
-                metrics=metrics, started_at=t, ended_at=end,
-            ))
-            t = end
+            if agent and action and agent.actions[action].prompt:
+                latency += rng.randint(4000, 22000)
+                tokens_in += rng.randint(1500, 9000)
+                tokens_out += rng.randint(200, 1800)
+            else:
+                latency += rng.randint(40, 600)
+        cost = (tokens_in * pricing.get("input", 0.0) + tokens_out * pricing.get("output", 0.0)) / 1_000_000
+        t = created + timedelta(milliseconds=latency)
+        s.add(StageEvent(
+            case_id=case.id, run_no=1, seq=1, stage_id=path[-1][0], agent_id=None, action=None,
+            status=StageStatus.completed, outcome=decision, input_summary={}, output={},
+            reasoning=["Sample history: a summary of a full run (per-stage events are not stored)."],
+            metrics={"latency_ms": latency, "tokens_in": tokens_in, "tokens_out": tokens_out,
+                     "cost_usd": round(cost, 6), "cache_hit": False, "sample": True},
+            started_at=created, ended_at=t,
+        ))
         case.updated_at = t + (timedelta(hours=rng.uniform(0.5, 30)) if decision != "auto_approve" else timedelta())
         if case.status == CaseStatus.approved:
             case.approved_at = case.updated_at

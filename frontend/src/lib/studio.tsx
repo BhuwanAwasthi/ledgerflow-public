@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { parseDocument, type Document } from "yaml";
 import { api, ApiError, unwrap, type ConfigFileDetail } from "@/api/client";
-import { roleLabel, usePrefs } from "@/lib/prefs";
+import { useActor } from "@/lib/auth";
 
 export function useConfigFiles() {
   return useQuery({ queryKey: ["config-files"], queryFn: async () => unwrap(await api.GET("/api/config/files")) });
@@ -35,11 +35,11 @@ function useRefreshConfig() {
 }
 
 export function useSaveConfig() {
-  const { role } = usePrefs();
+  const actor = useActor();
   const refresh = useRefreshConfig();
   return useMutation({
     mutationFn: async ({ path, content }: { path: string; content: string }) =>
-      unwrap(await api.PUT("/api/config/{path}", { params: { path: { path } }, body: { content, author: roleLabel(role) } })),
+      unwrap(await api.PUT("/api/config/{path}", { params: { path: { path } }, body: { content, author: actor } })),
     onSuccess: (d, v) => refresh(v.path, d),
   });
 }

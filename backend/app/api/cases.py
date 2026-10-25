@@ -142,6 +142,16 @@ def list_cases(
     }
 
 
+@router.get("/by-ref/{ref}", response_model=CaseOut)
+def get_case_by_ref(ref: str, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
+    """The case with this ref (e.g. INV-2026-0003) in the caller's workspace: the SPA's /cases/:ref links.
+    Refs are per workspace, so another user's ref resolves to their own case or 404."""
+    case = s.scalars(scoped(select(Case).where(Case.ref == ref), require_owner(s))).first()
+    if case is None:
+        raise HTTPException(404, f"case {ref} not found")
+    return case_out(s, orch, case)
+
+
 @router.get("/{case_id}", response_model=CaseDetailOut)
 def get_case(case_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     case = _load_case(s, case_id)

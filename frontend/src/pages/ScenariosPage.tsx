@@ -2,12 +2,14 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Download, FileWarning, Loader2, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { api, apiUrl, unwrap, type Fixture } from "@/api/client";
+import { api, unwrap, type Fixture } from "@/api/client";
+import { FileLink } from "@/components/FileLink";
 import { ErrorNote, PageHeader, StatusBadge } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/primitives";
 import { Tip } from "@/components/ui/overlays";
+import { caseLink } from "@/lib/nav";
 
 function expectedDecision(f: Fixture): string | null {
   const d = f.expect.decision;
@@ -21,7 +23,7 @@ export default function ScenariosPage() {
     mutationFn: async (id: string) => unwrap(await api.POST("/api/fixtures/{scenario_id}/run", { params: { path: { scenario_id: id } } })),
     onSuccess: (c) => {
       toast.success(`${c.ref} started`, { description: "Opening the live run." });
-      navigate(`/cases/${c.id}/live`);
+      navigate(caseLink(c));
     },
     onError: (e) => toast.error("Could not start the scenario", { description: e instanceof Error ? e.message : undefined }),
   });
@@ -62,9 +64,9 @@ export default function ScenariosPage() {
                 </Button>
                 <Tip content={`Download ${f.file}`}>
                   <Button size="icon-sm" variant="outline" asChild>
-                    <a href={apiUrl(`/api/fixtures/${f.id}/files/${encodeURIComponent(f.file)}`)} aria-label={`Download ${f.file}`}>
+                    <FileLink path={`/api/fixtures/${f.id}/files/${encodeURIComponent(f.file)}`} aria-label={`Download ${f.file}`}>
                       <Download />
-                    </a>
+                    </FileLink>
                   </Button>
                 </Tip>
               </div>

@@ -46,7 +46,7 @@ def approved(
 ) -> dict[str, Any]:
     """Approved library. `exported=false` = not exported yet; `true` = already exported; omit for both."""
     statuses = {None: list(EXPORTABLE), False: [CaseStatus.approved], True: [CaseStatus.exported]}[exported]
-    stmt = scoped(select(Case).where(Case.status.in_(statuses), Case.seed.is_(False)), require_owner(s))
+    stmt = scoped(select(Case).where(Case.status.in_(statuses), Case.is_sample.is_(False)), require_owner(s))
     total = s.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     page, page_size = max(page, 1), min(max(page_size, 1), 200)
     rows = s.scalars(stmt.order_by(Case.approved_at.desc(), Case.id.desc()).offset((page - 1) * page_size).limit(page_size)).all()

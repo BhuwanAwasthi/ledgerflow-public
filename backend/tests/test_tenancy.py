@@ -60,6 +60,7 @@ def test_user_b_gets_404_for_everything_of_user_a(live_settings: Settings):
             f"/api/cases/{a}/audit-pack", f"/api/cases/{a}/documents/{d}/file",
             f"/api/cases/{a}/documents/{d}/pages/1.png", f"/api/exports/{batch['id']}/download",
             f"/api/vendors/{s05['vendor_id']}", f"/api/pos/{po['id']}", f"/portal/{token}",
+            f"/api/cases/by-ref/{s01['ref']}",
         ]
         for url in reads:
             assert alice.get(url).status_code == 200, url  # the owner can
@@ -94,7 +95,7 @@ def test_user_b_gets_404_for_everything_of_user_a(live_settings: Settings):
         assert (Decimal(bob_po["consumed"]), Decimal(po["consumed"])) == (0, Decimal("4415.00"))
         assert bob.get("/api/dashboard/metrics").json()["kpis"]["in_review"] == 0
         bob_stats, alice_stats = bob.get("/api/config/agent-stats").json(), alice.get("/api/config/agent-stats").json()
-        assert bob_stats["intake"]["runs"] == 40 and alice_stats["intake"]["runs"] > 40  # his seeded history only
+        assert "intake" not in bob_stats and alice_stats["intake"]["runs"] >= 1  # sample history has no agent runs
 
         # ---- config: Alice's edit is hers alone
         assert alice.get("/api/config").json()["hash"] != bob.get("/api/config").json()["hash"]
@@ -104,6 +105,8 @@ def test_user_b_gets_404_for_everything_of_user_a(live_settings: Settings):
         # ---- numbering is per workspace
         b01 = bob.post("/api/fixtures/S01_happy/run").json()
         assert b01["ref"] == s01["ref"]  # both are their workspace's first run
+        assert bob.get(f"/api/cases/by-ref/{s01['ref']}").json()["id"] == b01["id"]  # same ref, his own case
+        assert alice.get(f"/api/cases/by-ref/{s01['ref']}").json()["id"] == a
         wait_status(bob, b01["id"], SETTLED, timeout=60)
         assert bob.post("/api/exports", json={"case_ids": [b01["id"]], "mode": "batch"}).json()["ref"] == batch["ref"]
 

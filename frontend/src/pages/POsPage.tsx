@@ -3,7 +3,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowLeft, Download, GitFork, History, ListOrdered, Receipt } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, apiUrl, unwrap, type PO } from "@/api/client";
+import { api, unwrap, type PO } from "@/api/client";
+import { FileLink } from "@/components/FileLink";
 import { DataTable } from "@/components/DataTable";
 import { ErrorNote, PageHeader, StatusBadge } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -91,9 +92,9 @@ export function POsPage() {
         description="How much of each PO is consumed by approved invoices, reserved by invoices in flight, and still open."
         actions={
           <Button variant="outline" size="sm" asChild>
-            <a href={apiUrl("/api/master/purchase_orders.csv")}>
+            <FileLink path={"/api/master/purchase_orders.csv"}>
               <Download /> Export CSV
-            </a>
+            </FileLink>
           </Button>
         }
       />

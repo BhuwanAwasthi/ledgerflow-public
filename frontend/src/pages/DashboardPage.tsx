@@ -9,13 +9,14 @@ import { DataTable } from "@/components/DataTable";
 import { ErrorNote, PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge, Segmented, Skeleton } from "@/components/ui/primitives";
+import { Segmented, Skeleton, Switch } from "@/components/ui/primitives";
 import { Tip } from "@/components/ui/overlays";
 import { useConfig } from "@/lib/config";
 import { compact, count, duration, money, pct, shortDate, usd } from "@/lib/format";
 import { readPref, usePrefs, writePref } from "@/lib/prefs";
 import { chartColor, statusDef, toneStyle } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { caseLink } from "@/lib/nav";
 
 function useChartTheme() {
   const { dark } = usePrefs();
@@ -158,10 +159,11 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const ranges = cfg?.app.ui.dashboard.ranges ?? [];
   const [range, setRange] = useState(() => readPref("lf-dash-range", ""));
+  const [samples, setSamples] = useState(() => readPref("lf-dash-samples", "shown") !== "hidden");
   const effective = ranges.includes(range) ? range : cfg?.app.ui.dashboard.default_range ?? "";
   const q = useQuery({
-    queryKey: ["dashboard", effective],
-    queryFn: async () => unwrap(await api.GET("/api/dashboard/metrics", { params: { query: { range: effective } } })),
+    queryKey: ["dashboard", effective, samples],
+    queryFn: async () => unwrap(await api.GET("/api/dashboard/metrics", { params: { query: { range: effective, include_samples: samples } } })),
     enabled: !!cfg,
     refetchInterval: 20_000,
     placeholderData: (prev) => prev,
@@ -178,11 +180,20 @@ export default function DashboardPage() {
         description={`Every invoice decided by rules, explained by agents.${effective ? ` Last ${effective.replace("d", " days")}.` : ""}`}
         actions={
           <>
-            {!!d?.seeded_cases && (
-              <Tip content="Seeded demo history (make seed) so the charts have shape on first open. Live runs are added on top.">
-                <Badge className="gap-1.5">
-                  <Database className="size-3" /> {d.seeded_cases} seeded demo cases
-                </Badge>
+            {!!d?.sample_cases && (
+              <Tip content={`${d.sample_cases} sample cases were seeded into your workspace so the charts have shape on first open. Your own runs are added on top. Hide them to see only your runs.`}>
+                <span className="inline-flex h-8 items-center gap-2 rounded-md border bg-surface px-2.5 text-xs font-medium">
+                  <Database className="size-3.5 text-muted-foreground" />
+                  {samples ? "Includes sample history" : "Sample history hidden"}
+                  <Switch
+                    checked={samples}
+                    label="Show sample history"
+                    onChange={(on) => {
+                      setSamples(on);
+                      writePref("lf-dash-samples", on ? "shown" : "hidden");
+                    }}
+                  />
+                </span>
               </Tip>
             )}
             <Segmented
@@ -195,7 +206,7 @@ export default function DashboardPage() {
               }}
             />
             <Button size="sm" asChild>
-              <Link to="/scenarios">
+              <Link to="/launcher">
                 <PlayCircle /> Run a scenario
               </Link>
             </Button>
@@ -290,7 +301,7 @@ export default function DashboardPage() {
             searchable={false}
             maxHeight="none"
             columns={[caseCols.refCompact, caseCols.vendor, caseCols.total, caseCols.decision, caseCols.status, caseCols.created]}
-            onRowClick={(c) => navigate(`/cases/${c.id}/live`)}
+            onRowClick={(c) => navigate(caseLink(c))}
             empty="No cases yet. Run a scenario to see one flow through."
           />
         </div>

@@ -12,6 +12,7 @@ import { useConfig } from "@/lib/config";
 import { readPref, writePref } from "@/lib/prefs";
 import { toneStyle } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { caseLink } from "@/lib/nav";
 
 const ACCEPT = ".pdf,.png,.jpg,.jpeg,.docx";
 
@@ -92,7 +93,7 @@ export default function SubmitPage() {
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link to={`/cases/${done.id}/live`}>
+              <Link to={caseLink(done)}>
                 <Radio /> Watch it live
               </Link>
             </Button>

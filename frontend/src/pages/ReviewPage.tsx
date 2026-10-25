@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, Library, Columns2, Download, FileSearch, GitCompareArrows, History, ListChecks, Loader2, Table2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { api, apiUrl, unwrap, type GridOp, type Workspace } from "@/api/client";
+import { api, unwrap, type GridOp, type Workspace } from "@/api/client";
+import { FileLink } from "@/components/FileLink";
 import { ErrorNote, StatusBadge } from "@/components/common";
 import { ActionBar, type Draft, type ReviewActionName } from "@/components/review/ActionBar";
 import { ComparePanel, invoiceDocumentId } from "@/components/review/ComparePanel";
@@ -16,10 +17,13 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/primitives";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useConfig } from "@/lib/config";
+import { caseLink } from "@/lib/nav";
 import { dateTime, money } from "@/lib/format";
-import { ROLES, usePrefs } from "@/lib/prefs";
+import { useCaseParam } from "@/hooks/useCaseParam";
+import { useActor } from "@/lib/auth";
 import { ACTIVE_CASE_STATUSES, toneStyle } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { SampleBadge } from "@/components/caseColumns";
 
 type Tab = "template" | "rules" | "match" | "history";
 
@@ -33,13 +37,13 @@ function flaggedFields(ws: Workspace | undefined): Set<string> {
 }
 
 export default function ReviewPage() {
-  const id = Number(useParams().id);
+  const param = useCaseParam();
+  const id = param.id ?? NaN;
   const qc = useQueryClient();
   const { data: cfg } = useConfig();
   const [params, setParams] = useSearchParams();
   const [asked, setAsked] = useState(false);
-  const { role } = usePrefs();
-  const actor = ROLES.find((r) => r.value === role)?.label ?? "AP Reviewer"; // demo: no auth, the role is the actor
+  const actor = useActor();
 
   const detail = useQuery({
     queryKey: ["case", id],
@@ -108,7 +112,7 @@ export default function ReviewPage() {
   const draft = (w?.draft as Draft | null | undefined) ?? null;
   const holdDraft = draft && draft.kind !== "rejection" ? draft : null;
 
-  if (detail.error) return <ErrorNote error={detail.error} />;
+  if (param.error || detail.error) return <ErrorNote error={param.error ?? detail.error} />;
   if (!c || !w) return <WorkspaceSkeleton />;
 
   const counts = {
@@ -130,7 +134,7 @@ export default function ReviewPage() {
       </span>
       {c.approved_at && (
         <Button size="sm" variant="outline" className="ml-auto" asChild>
-          <Link to="/library">
+          <Link to="/approved">
             <Library /> Approved library
           </Link>
         </Button>
@@ -145,6 +149,7 @@ export default function ReviewPage() {
       <div className="flex shrink-0 items-center gap-3">
         <FileSearch className="size-4 text-muted-foreground" aria-hidden />
         <h1 className="text-lg font-semibold tracking-tight tabular">{c.ref}</h1>
+        {c.is_sample && <SampleBadge />}
         <StatusBadge kind="case" value={c.status} pulse={processing} />
         <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
           {[c.vendor_name ?? c.submitter_name, c.invoice_number && `invoice ${c.invoice_number}`, c.submitter_email && `from ${c.submitter_email}`].filter(Boolean).join(" · ")}
@@ -156,14 +161,14 @@ export default function ReviewPage() {
             </Button>
           )}
           <Button variant="outline" size="sm" asChild>
-            <Link to={`/cases/${id}/live`}>
+            <Link to={caseLink({ id, ref: c?.ref })}>
               <Activity /> Live run
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <a href={apiUrl(`/api/cases/${id}/audit-pack`)}>
+            <FileLink path={`/api/cases/${id}/audit-pack`}>
               <Download /> Audit pack
-            </a>
+            </FileLink>
           </Button>
         </div>
       </div>
@@ -186,7 +191,7 @@ export default function ReviewPage() {
           <span>
             <span className="font-medium">{c.status_label ?? "Processing"}…</span> The checks, decision and template run again; this page updates when they finish.
           </span>
-          <Link to={`/cases/${id}/live`} className="ml-auto text-xs font-medium text-primary hover:underline">
+          <Link to={caseLink({ id, ref: c?.ref })} className="ml-auto text-xs font-medium text-primary hover:underline">
             Watch live
           </Link>
         </div>

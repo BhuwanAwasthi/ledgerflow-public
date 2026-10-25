@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, Moon, Search, Sun, UserRound } from "lucide-react";
+import { Bell, ChevronDown, Eye, LogOut, Moon, Search, Settings, Sun } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +8,9 @@ import { Kbd } from "@/components/ui/primitives";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
@@ -21,13 +23,16 @@ import { CommandPalette } from "./CommandPalette";
 import { ColdStartBanner } from "./ColdStartBanner";
 import { useConfig } from "@/lib/config";
 import { relative } from "@/lib/format";
+import { useAuth, useMe, homePath } from "@/lib/auth";
 import { GROUPS, homeFor, navFor } from "@/lib/nav";
 import { ROLES, roleLabel, usePrefs, type Role } from "@/lib/prefs";
+import { PRIVATE_ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 function Logo({ name, tagline }: { name: string; tagline?: string }) {
+  const me = useMe();
   return (
-    <Link to="/" className="flex items-center gap-2.5 px-2">
+    <Link to={homePath(me.data)} className="flex items-center gap-2.5 px-2">
       <svg viewBox="0 0 32 32" className="size-7 shrink-0" aria-hidden>
         <rect width="32" height="32" rx="8" className="fill-primary" />
         <path d="M9 9v14h14" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -66,7 +71,6 @@ function Sidebar({ role }: { role: Role }) {
                 <NavLink
                   key={i.to}
                   to={i.to}
-                  end={i.to === "/"}
                   className={({ isActive }) =>
                     cn(
                       "group mb-0.5 flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
@@ -86,7 +90,7 @@ function Sidebar({ role }: { role: Role }) {
         })}
       </nav>
       <div className="border-t p-3 text-[11px] leading-relaxed text-muted-foreground">
-        Demo build · no real auth.
+        Your private workspace.
         <br />
         {cfg?.app.app.company}
       </div>
@@ -94,20 +98,25 @@ function Sidebar({ role }: { role: Role }) {
   );
 }
 
-function RoleSwitcher() {
+/** A view toggle, not a permission: you are Submitter, Reviewer and Admin of your own workspace. It only
+ * changes which screens the navigation shows. */
+function ViewToggle() {
   const { role, setRole } = usePrefs();
   const navigate = useNavigate();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2" aria-label="Switch demo role">
-          <UserRound className="size-4 text-muted-foreground" />
-          <span>{roleLabel(role)}</span>
+        <Button variant="outline" size="sm" className="gap-2" aria-label={`View: ${roleLabel(role)}. Change view`}>
+          <Eye className="size-4 text-muted-foreground" />
+          <span className="hidden sm:inline">{roleLabel(role)} view</span>
           <ChevronDown className="size-3.5 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel>View as (demo role, no login)</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuLabel>
+          Navigation view
+          <div className="mt-0.5 text-xs font-normal text-muted-foreground">You can do everything in your workspace; this only changes the menu.</div>
+        </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={role}
           onValueChange={(v) => {
@@ -125,6 +134,44 @@ function RoleSwitcher() {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function UserMenu() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  if (!user) return null;
+  const label = user.name || user.email;
+  const initials = label.split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label={`Account: ${label}`}>
+          {user.avatar_url ? (
+            <img src={user.avatar_url} alt="" referrerPolicy="no-referrer" className="size-7 rounded-full" />
+          ) : (
+            <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">{initials}</span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuLabel>
+          <div className="truncate">{user.name ?? "Signed in"}</div>
+          <div className="truncate text-xs font-normal text-muted-foreground">{user.email}</div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => navigate(PRIVATE_ROUTES.settings)}>
+          <Settings className="size-4" /> Settings
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => {
+            void signOut().then(() => navigate("/", { replace: true }));
+          }}
+        >
+          <LogOut className="size-4" /> Sign out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -171,7 +218,7 @@ function NotificationBell() {
               key={n.id}
               onClick={() => {
                 if (!n.read) markRead.mutate(n.id);
-                if (n.case_id) navigate(`/cases/${n.case_id}/live`);
+                if (n.case_id) navigate(`/cases/${n.case_id}`);
               }}
               className={cn("flex w-full gap-3 border-b px-4 py-3 text-left last:border-0 hover:bg-muted/60", !n.read && "bg-accent/40")}
             >
@@ -231,7 +278,8 @@ export function AppShell({ children }: { children?: ReactNode }) {
               </Button>
             </Tip>
             <div className="mx-1 h-5 w-px bg-border" />
-            <RoleSwitcher />
+            <ViewToggle />
+            <UserMenu />
           </div>
         </header>
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 lg:px-8 lg:py-8">{children ?? <Outlet />}</main>

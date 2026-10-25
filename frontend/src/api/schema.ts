@@ -42,6 +42,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases/by-ref/{ref}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Case By Ref
+         * @description The case with this ref (e.g. INV-2026-0003) in the caller's workspace: the SPA's /cases/:ref links.
+         *     Refs are per workspace, so another user's ref resolves to their own case or 404.
+         */
+        get: operations["get_case_by_ref_api_cases_by_ref__ref__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cases/{case_id}": {
         parameters: {
             query?: never;
@@ -121,7 +142,8 @@ export interface paths {
          * Stream Events
          * @description SSE: replays stored stage_events (after Last-Event-ID, or `after` = the last seq the client has, for a
          *     manual reconnect), then streams live `stage_event`, `case_updated` and `progress` events.
-         *     `follow=false` closes after the replay.
+         *     `follow=false` closes after the replay. Authenticates with the Authorization header or with `?t=`, a token
+         *     from POST /stream-token (app.auth).
          */
         get: operations["stream_events_api_cases__case_id__events_stream_get"];
         put?: never;
@@ -183,6 +205,27 @@ export interface paths {
         put?: never;
         /** Review */
         post: operations["review_api_cases__case_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/stream-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stream Token
+         * @description A single-use, 60-second token for the SSE stream (browser EventSource cannot send the Authorization
+         *     header): open `url` within the minute.
+         */
+        post: operations["stream_token_api_cases__case_id__stream_token_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -435,7 +478,8 @@ export interface paths {
         };
         /**
          * Fixture File
-         * @description Download a scenario's PDF or one of its supporting files (e.g. the S05 W-9 for the vendor portal).
+         * @description Download a scenario's PDF or one of its supporting files (e.g. the S05 W-9 for the vendor portal),
+         *     from the shared read-only baseline copy.
          */
         get: operations["fixture_file_api_fixtures__scenario_id__files__filename__get"];
         put?: never;
@@ -457,7 +501,8 @@ export interface paths {
         put?: never;
         /**
          * Run Fixture
-         * @description Create a case from the scenario's fixture file (source=fixture) and queue it.
+         * @description Create a case from the scenario's fixture file (source=fixture) and queue it, after the cases of any
+         *     prerequisite scenario it had to run first (each one starts when the previous run ends).
          */
         post: operations["run_fixture_api_fixtures__scenario_id__run_post"];
         delete?: never;
@@ -501,6 +546,65 @@ export interface paths {
          *     vendors, then purchase orders, then PO lines. A changed PO amount is logged as a PO amendment.
          */
         post: operations["import_master_api_master__entity__import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Me */
+        get: operations["get_me_api_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/file-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * File Token
+         * @description A 60-second link to one file route (PDF, page PNG, template, ZIP, audit pack) for <img>, react-pdf and
+         *     download links, which cannot send the Authorization header. The route still checks ownership.
+         */
+        post: operations["file_token_api_me_file_token_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/reset-workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Workspace
+         * @description Wipe this workspace (cases, documents, exports, master data, files) and seed the demo data again.
+         *     Agent Studio config edits are kept.
+         */
+        post: operations["reset_workspace_api_me_reset_workspace_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -650,7 +754,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Healthz */
+        /**
+         * Healthz
+         * @description The only public route (app.auth.PUBLIC_PATHS): liveness, DB, storage and the auth mode.
+         */
         get: operations["healthz_healthz_get"];
         put?: never;
         post?: never;
@@ -782,6 +889,11 @@ export interface components {
             invoice_date?: string | null;
             /** Invoice Number */
             invoice_number?: string | null;
+            /**
+             * Is Sample
+             * @default false
+             */
+            is_sample: boolean;
             /** Latest Template Version */
             latest_template_version?: number | null;
             /** Note */
@@ -796,11 +908,8 @@ export interface components {
             review_actions: components["schemas"]["ReviewActionOut"][];
             /** Rule Results */
             rule_results: components["schemas"]["RuleResultOut"][];
-            /**
-             * Seed
-             * @default false
-             */
-            seed: boolean;
+            /** Scenario Id */
+            scenario_id?: string | null;
             /** Sla Due At */
             sla_due_at: string | null;
             /** Source */
@@ -869,6 +978,11 @@ export interface components {
             invoice_date?: string | null;
             /** Invoice Number */
             invoice_number?: string | null;
+            /**
+             * Is Sample
+             * @default false
+             */
+            is_sample: boolean;
             /** Latest Template Version */
             latest_template_version?: number | null;
             /** Note */
@@ -879,11 +993,8 @@ export interface components {
             po_id: number | null;
             /** Ref */
             ref: string | null;
-            /**
-             * Seed
-             * @default false
-             */
-            seed: boolean;
+            /** Scenario Id */
+            scenario_id?: string | null;
             /** Sla Due At */
             sla_due_at: string | null;
             /** Source */
@@ -1063,6 +1174,8 @@ export interface components {
             decision_mix: components["schemas"]["DecisionCountOut"][];
             /** Exceptions By Rule */
             exceptions_by_rule: components["schemas"]["RuleExceptionOut"][];
+            /** Include Samples */
+            include_samples: boolean;
             kpis: components["schemas"]["DashboardKpisOut"];
             /** Range */
             range: string;
@@ -1070,8 +1183,8 @@ export interface components {
             ranges: string[];
             /** Recent */
             recent: components["schemas"]["CaseOut"][];
-            /** Seeded Cases */
-            seeded_cases: number;
+            /** Sample Cases */
+            sample_cases: number;
             /** Series */
             series: {
                 [key: string]: unknown;
@@ -1183,6 +1296,14 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** FileTokenIn */
+        FileTokenIn: {
+            /**
+             * Path
+             * @description API path of a file route, e.g. /api/cases/1/documents/2/file
+             */
+            path: string;
+        };
         /** FixtureFileOut */
         FixtureFileOut: {
             /** Available */
@@ -1208,6 +1329,11 @@ export interface components {
             id: string;
             /** Render */
             render: string;
+            /**
+             * Requires
+             * @default []
+             */
+            requires: string[];
             /** Run Order */
             run_order: number | null;
             /** Supporting Files */
@@ -1222,6 +1348,8 @@ export interface components {
         };
         /** HealthOut */
         HealthOut: {
+            /** Auth Mode */
+            auth_mode: string;
             /** Config Hash */
             config_hash?: string | null;
             /** Db */
@@ -1276,6 +1404,27 @@ export interface components {
             unchanged: number;
             /** Updated */
             updated: number;
+        };
+        /** MeOut */
+        MeOut: {
+            /** Auth Mode */
+            auth_mode: string;
+            /** Avatar Url */
+            avatar_url: string | null;
+            /** Baseline Current */
+            baseline_current: number;
+            /** Baseline Outdated */
+            baseline_outdated: boolean;
+            /** Baseline Version */
+            baseline_version: number | null;
+            /** Email */
+            email: string;
+            /** Id */
+            id: string;
+            /** Mode */
+            mode: string;
+            /** Name */
+            name: string | null;
         };
         /** NotificationOut */
         NotificationOut: {
@@ -1523,6 +1672,23 @@ export interface components {
             /** From Stage */
             from_stage?: string | null;
         };
+        /** ResetWorkspaceOut */
+        ResetWorkspaceOut: {
+            /** Baseline Version */
+            baseline_version: number;
+            /** Gl Accounts */
+            gl_accounts: number;
+            /** Grns */
+            grns: number;
+            /** History Cases */
+            history_cases: number;
+            /** Po Lines */
+            po_lines: number;
+            /** Purchase Orders */
+            purchase_orders: number;
+            /** Vendors */
+            vendors: number;
+        };
         /** ReviewActionOut */
         ReviewActionOut: {
             /** Action */
@@ -1592,6 +1758,92 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** ScenarioCaseOut */
+        ScenarioCaseOut: {
+            /** Id */
+            id: number;
+            /** Ref */
+            ref: string | null;
+            /** Scenario Id */
+            scenario_id: string | null;
+        };
+        /** ScenarioRunOut */
+        ScenarioRunOut: {
+            /** Approved At */
+            approved_at?: string | null;
+            /** Approved By */
+            approved_by?: string | null;
+            /** Confidence */
+            confidence: number | null;
+            /** Config Hash */
+            config_hash: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string | null;
+            /** Current Stage */
+            current_stage: string | null;
+            /** Decision */
+            decision: string | null;
+            /** Decision Summary */
+            decision_summary: string | null;
+            /** Exported At */
+            exported_at?: string | null;
+            /** Id */
+            id: number;
+            /** Invoice Date */
+            invoice_date?: string | null;
+            /** Invoice Number */
+            invoice_number?: string | null;
+            /**
+             * Is Sample
+             * @default false
+             */
+            is_sample: boolean;
+            /** Latest Template Version */
+            latest_template_version?: number | null;
+            /** Note */
+            note: string | null;
+            /** Parent Case Id */
+            parent_case_id: number | null;
+            /** Po Id */
+            po_id: number | null;
+            /**
+             * Prerequisites
+             * @default []
+             */
+            prerequisites: components["schemas"]["ScenarioCaseOut"][];
+            /** Ref */
+            ref: string | null;
+            /** Scenario Id */
+            scenario_id?: string | null;
+            /** Sla Due At */
+            sla_due_at: string | null;
+            /** Source */
+            source: string;
+            /** Status */
+            status: string;
+            /** Status Label */
+            status_label?: string | null;
+            /** Submitter Email */
+            submitter_email: string | null;
+            /** Submitter Name */
+            submitter_name: string | null;
+            /** Total */
+            total: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Vendor Id */
+            vendor_id: number | null;
+            /** Vendor Name */
+            vendor_name?: string | null;
+        };
         /** SetFieldOp */
         SetFieldOp: {
             /**
@@ -1617,6 +1869,13 @@ export interface components {
              * @enum {string}
              */
             op: "set_gl";
+        };
+        /** SignedUrlOut */
+        SignedUrlOut: {
+            /** Expires In */
+            expires_in: number;
+            /** Url */
+            url: string;
         };
         /** StageEventOut */
         StageEventOut: {
@@ -2034,6 +2293,37 @@ export interface operations {
             };
         };
     };
+    get_case_by_ref_api_cases_by_ref__ref__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_case_api_cases__case_id__get: {
         parameters: {
             query?: never;
@@ -2285,6 +2575,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CaseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_token_api_cases__case_id__stream_token_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedUrlOut"];
                 };
             };
             /** @description Validation Error */
@@ -2593,6 +2914,8 @@ export interface operations {
             query?: {
                 /** @description one of app.yaml ui.dashboard.ranges */
                 range?: string | null;
+                /** @description false: leave the sample history out */
+                include_samples?: boolean;
             };
             header?: never;
             path?: never;
@@ -2741,7 +3064,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": unknown;
+                };
             };
             /** @description Validation Error */
             422: {
@@ -2771,7 +3096,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CaseOut"];
+                    "application/json": components["schemas"]["ScenarioRunOut"];
                 };
             };
             /** @description Validation Error */
@@ -2847,6 +3172,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_me_api_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
+                };
+            };
+        };
+    };
+    file_token_api_me_file_token_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FileTokenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignedUrlOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_workspace_api_me_reset_workspace_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetWorkspaceOut"];
                 };
             };
         };

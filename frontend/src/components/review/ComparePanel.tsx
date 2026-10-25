@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/primitives";
 import { dateTime, money } from "@/lib/format";
 import { toneStyle } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { caseLink } from "@/lib/nav";
 import { PdfViewer } from "./PdfViewer";
 
 export interface DuplicateLink {
@@ -38,7 +39,7 @@ function Side({ c, title }: { c: CaseDetail; title: string }) {
     <Card className="flex min-h-0 flex-col overflow-hidden">
       <div className="flex items-center gap-2 border-b px-4 py-2.5">
         <span className="text-xs font-medium text-muted-foreground">{title}</span>
-        <Link to={`/cases/${c.id}/review`} className="inline-flex items-center gap-0.5 text-[13px] font-semibold hover:underline">
+        <Link to={caseLink(c, "review")} className="inline-flex items-center gap-0.5 text-[13px] font-semibold hover:underline">
           {c.ref} <ArrowUpRight className="size-3.5" />
         </Link>
         <StatusBadge kind="case" value={c.status} />

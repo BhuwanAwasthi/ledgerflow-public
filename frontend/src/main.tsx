@@ -1,16 +1,22 @@
 import "@fontsource-variable/inter";
 import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { lazy, StrictMode, Suspense } from "react";
+import { lazy, StrictMode, Suspense, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, Navigate, Outlet as RouterOutlet, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet as RouterOutlet, RouterProvider, useParams, type RouteObject } from "react-router-dom";
 import { Toaster } from "sonner";
+import { FullPageSpinner, RequireAuth } from "@/components/auth/RequireAuth";
 import { AppShell } from "@/components/layout/AppShell";
 import { Skeleton } from "@/components/ui/primitives";
 import { TooltipProvider } from "@/components/ui/overlays";
+import { AuthProvider } from "@/lib/auth";
 import { PrefsProvider, usePrefs } from "@/lib/prefs";
-import { homeFor } from "@/lib/nav";
+import { fillPath, PRIVATE_ROUTES, PUBLIC_ROUTES, REDIRECTS, type PrivateRoute } from "@/lib/routes";
 
+const LandingPage = lazy(() => import("@/pages/LandingPage"));
+const LoginPage = lazy(() => import("@/pages/LoginPage"));
+const AuthCallbackPage = lazy(() => import("@/pages/AuthCallbackPage"));
+const LegalPage = lazy(() => import("@/pages/LegalPage"));
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const LiveRunPage = lazy(() => import("@/pages/LiveRunPage"));
 const SubmitPage = lazy(() => import("@/pages/SubmitPage"));
@@ -60,60 +66,103 @@ function ThemedToaster() {
   );
 }
 
-function Home() {
-  const { role } = usePrefs();
-  return role === "submitter" ? <Navigate to={homeFor(role)} replace /> : <DashboardPage />;
+/** Old path -> new path, keeping params, query and hash. */
+function Redirect({ to }: { to: string }) {
+  const params = useParams();
+  const target = fillPath(to, Object.fromEntries(Object.entries(params).map(([k, v]) => [k, v ?? ""])));
+  return <Navigate to={{ pathname: target, search: window.location.search, hash: window.location.hash }} replace />;
+}
+
+/** /studio/rules -> /studio?tab=rules (Agent Studio keeps its tab in the query string). */
+function StudioTab() {
+  const { tab } = useParams();
+  return <Navigate to={`${PRIVATE_ROUTES.studio}?tab=${encodeURIComponent(tab ?? "")}`} replace />;
 }
 
 const soon = (title: string, phase: string, description: string) => <ComingSoonPage title={title} phase={phase} description={description} />;
 
-const router = createBrowserRouter([
+// Every signed-in screen inside the app shell. A Record over the route table, so the typechecker refuses a
+// route without a screen (and e2e/auth-gate.spec.ts visits each of them signed out).
+const shellPages: Record<Exclude<PrivateRoute, "portal">, ReactNode> = {
+  launcher: <ScenariosPage />,
+  dashboard: <DashboardPage />,
+  submit: <SubmitPage />,
+  submissions: <MySubmissionsPage />,
+  cases: <CasesPage />,
+  liveRun: <LiveRunPage />,
+  review: <ReviewPage />,
+  queue: <CasesPage queue />,
+  approved: <LibraryPage />,
+  vendors: <VendorsPage />,
+  vendor: <VendorDetailPage />,
+  pos: <POsPage />,
+  po: <PODetailPage />,
+  studio: <StudioPage />,
+  studioTab: <StudioTab />,
+  whatif: soon("What-if simulator", "P6", "Replay your cases against changed rules and tolerances before you save them."),
+  guide: soon("Replicate this", "P7", "A step-by-step guide to running LedgerFlow in your own company."),
+  settings: soon("Settings", "P4", "Your API key, mode, demo data reset and account deletion."),
+  owner: soon("Owner console", "P7", "Aggregate usage and kill switches, for the site owner only."),
+  notFound: <ComingSoonPage title="Page not found" description="That address doesn't match a screen." />,
+};
+
+const publicPages: Record<keyof typeof PUBLIC_ROUTES, ReactNode> = {
+  landing: <LandingPage />,
+  login: <LoginPage />,
+  callback: <AuthCallbackPage />,
+  privacy: <LegalPage kind="privacy" />,
+  terms: <LegalPage kind="terms" />,
+};
+
+const routes: RouteObject[] = [
   {
-    // public vendor upload page: no app shell, no role switcher
-    path: "/portal/:token",
     element: (
-      <Suspense fallback={null}>
-        <PortalPage />
+      <Suspense fallback={<FullPageSpinner label="Loading…" />}>
+        <RouterOutlet />
       </Suspense>
     ),
+    children: Object.entries(PUBLIC_ROUTES).map(([k, path]) => ({ path, element: publicPages[k as keyof typeof PUBLIC_ROUTES] })),
+  },
+  {
+    // vendor upload page: signed in + token + ownership (DECISIONS: vendor portal), no app shell
+    path: PRIVATE_ROUTES.portal,
+    element: (
+      <RequireAuth>
+        <Suspense fallback={null}>
+          <PortalPage />
+        </Suspense>
+      </RequireAuth>
+    ),
   },
   {
     element: (
-      <AppShell>
-        <Suspense fallback={<PageFallback />}>
-          <RouterOutlet />
-        </Suspense>
-      </AppShell>
+      <RequireAuth>
+        <AppShell>
+          <Suspense fallback={<PageFallback />}>
+            <RouterOutlet />
+          </Suspense>
+        </AppShell>
+      </RequireAuth>
     ),
     children: [
-      { path: "/", element: <Home /> },
-      { path: "/submit", element: <SubmitPage /> },
-      { path: "/submissions", element: <MySubmissionsPage /> },
-      { path: "/queue", element: <CasesPage queue /> },
-      { path: "/cases", element: <CasesPage /> },
-      { path: "/cases/:id/live", element: <LiveRunPage /> },
-      { path: "/cases/:id", element: <Navigate to="live" replace /> },
-      { path: "/cases/:id/review", element: <ReviewPage /> },
-      { path: "/scenarios", element: <ScenariosPage /> },
-      { path: "/library", element: <LibraryPage /> },
-      { path: "/vendors", element: <VendorsPage /> },
-      { path: "/vendors/:id", element: <VendorDetailPage /> },
-      { path: "/pos", element: <POsPage /> },
-      { path: "/pos/:id", element: <PODetailPage /> },
-      { path: "/studio", element: <StudioPage /> },
-      { path: "*", element: soon("Page not found", "—", "That address doesn't match a screen.") },
+      ...(Object.keys(shellPages) as (keyof typeof shellPages)[]).map((k) => ({ path: PRIVATE_ROUTES[k], element: shellPages[k] })),
+      ...Object.entries(REDIRECTS).map(([from, to]) => ({ path: from, element: <Redirect to={to} /> })),
     ],
   },
-]);
+];
+
+const router = createBrowserRouter(routes);
 
 createRoot(document.getElementById("root") as HTMLElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <PrefsProvider>
-        <TooltipProvider>
-          <RouterProvider router={router} />
-          <ThemedToaster />
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <RouterProvider router={router} />
+            <ThemedToaster />
+          </TooltipProvider>
+        </AuthProvider>
       </PrefsProvider>
     </QueryClientProvider>
   </StrictMode>,

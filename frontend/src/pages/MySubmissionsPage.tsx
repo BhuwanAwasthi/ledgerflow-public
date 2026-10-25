@@ -13,6 +13,8 @@ import { dateTime, money } from "@/lib/format";
 import { readPref, writePref } from "@/lib/prefs";
 import { ACTIVE_CASE_STATUSES, statusDef } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { caseLink } from "@/lib/nav";
+import { SampleBadge } from "@/components/caseColumns";
 
 function SubmissionCard({ c, highlight }: { c: Case; highlight: boolean }) {
   const active = ACTIVE_CASE_STATUSES.has(c.status);
@@ -28,6 +30,7 @@ function SubmissionCard({ c, highlight }: { c: Case; highlight: boolean }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
             <span className="text-sm font-semibold tabular">{c.ref}</span>
+            {c.is_sample && <SampleBadge />}
             <StatusBadge kind="case" value={j.data?.status ?? c.status} pulse={active} />
           </div>
           <div className="mt-1 truncate text-[13px] text-muted-foreground">
@@ -38,7 +41,7 @@ function SubmissionCard({ c, highlight }: { c: Case; highlight: boolean }) {
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" asChild>
-            <Link to={`/cases/${c.id}/live`}>
+            <Link to={caseLink(c)}>
               <Radio /> Live view
             </Link>
           </Button>

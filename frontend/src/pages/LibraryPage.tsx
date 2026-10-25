@@ -4,7 +4,8 @@ import { Archive, Download, FileArchive, FileSpreadsheet, FileText, History, Lib
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { api, apiUrl, unwrap, type Case, type ExportBatch } from "@/api/client";
+import { api, downloadFile, unwrap, type Case, type ExportBatch } from "@/api/client";
+import { FileLink } from "@/components/FileLink";
 import { caseCols } from "@/components/caseColumns";
 import { DataTable } from "@/components/DataTable";
 import { EmptyState, ErrorNote, PageHeader, StatusBadge } from "@/components/common";
@@ -14,9 +15,10 @@ import { Checkbox, Segmented, Select } from "@/components/ui/primitives";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useConfig } from "@/lib/config";
 import { dateTime, money, relative } from "@/lib/format";
-import { usePrefs, roleLabel } from "@/lib/prefs";
+import { useActor } from "@/lib/auth";
 import { toneStyle } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { caseLink } from "@/lib/nav";
 
 type Filter = "false" | "true" | "all";
 
@@ -33,15 +35,6 @@ function centsToDecimal(c: bigint): string {
   return `${neg ? "-" : ""}${a / 100n}.${String(a % 100n).padStart(2, "0")}`;
 }
 type Mode = "zip" | "batch";
-
-function saveFile(path: string) {
-  const a = document.createElement("a");
-  a.href = apiUrl(path);
-  a.rel = "noopener";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
 
 function ExportHistory({ refs }: { refs: Map<number, string> }) {
   const q = useQuery({ queryKey: ["exports"], queryFn: async () => unwrap(await api.GET("/api/exports")) });
@@ -93,9 +86,9 @@ function ExportHistory({ refs }: { refs: Map<number, string> }) {
         cell: ({ row }) =>
           row.original.download_url ? (
             <Button size="xs" variant="outline" asChild>
-              <a href={apiUrl(row.original.download_url)} aria-label={`Download ${row.original.ref}`}>
+              <FileLink path={row.original.download_url} aria-label={`Download ${row.original.ref}`}>
                 <Download /> {row.original.filename}
-              </a>
+              </FileLink>
             </Button>
           ) : null,
       },
@@ -119,7 +112,7 @@ function ExportHistory({ refs }: { refs: Map<number, string> }) {
 
 export default function LibraryPage() {
   const qc = useQueryClient();
-  const { role } = usePrefs();
+  const actor = useActor();
   const { data: cfg } = useConfig();
   const [params, setParams] = useSearchParams();
   const filter = (params.get("exported") as Filter | null) ?? "false";
@@ -148,7 +141,7 @@ export default function LibraryPage() {
     mutationFn: async ({ mode, force }: { mode: Mode; force: boolean }) =>
       unwrap(
         await api.POST("/api/exports", {
-          body: { case_ids: chosen.map((c) => c.id), erp_profile: profile || null, mode, force, actor: roleLabel(role) },
+          body: { case_ids: chosen.map((c) => c.id), erp_profile: profile || null, mode, force, actor },
         }),
       ),
     onSuccess: (b) => {
@@ -157,7 +150,7 @@ export default function LibraryPage() {
       qc.invalidateQueries({ queryKey: ["approved"] });
       qc.invalidateQueries({ queryKey: ["exports"] });
       qc.invalidateQueries({ queryKey: ["cases"] });
-      if (b.download_url) saveFile(b.download_url);
+      if (b.download_url) void downloadFile(b.download_url).catch(() => toast.error("Download failed: open it from the export history"));
       toast.success(`${b.ref} created`, { description: `${b.case_ids.length} invoice(s) · ${b.filename ?? ""}` });
     },
     onError: (e) => toast.error("Export failed", { description: e instanceof Error ? e.message : undefined }),
@@ -238,22 +231,22 @@ export default function LibraryPage() {
               {c.latest_template_version && (
                 <Tip content={`Download template v${c.latest_template_version} (ERP file)`}>
                   <Button size="icon-sm" variant="ghost" asChild>
-                    <a href={apiUrl(`/api/cases/${c.id}/template/${c.latest_template_version}/download`)} aria-label={`Download ${c.ref} template`}>
+                    <FileLink path={`/api/cases/${c.id}/template/${c.latest_template_version}/download`} aria-label={`Download ${c.ref} template`}>
                       <FileSpreadsheet />
-                    </a>
+                    </FileLink>
                   </Button>
                 </Tip>
               )}
               <Tip content="Audit pack (PDF): decision, rule results, every stage event">
                 <Button size="icon-sm" variant="ghost" asChild>
-                  <a href={apiUrl(`/api/cases/${c.id}/audit-pack`)} aria-label={`Audit pack for ${c.ref}`}>
+                  <FileLink path={`/api/cases/${c.id}/audit-pack`} aria-label={`Audit pack for ${c.ref}`}>
                     <FileText />
-                  </a>
+                  </FileLink>
                 </Button>
               </Tip>
               <Tip content="Open the case">
                 <Button size="icon-sm" variant="ghost" asChild>
-                  <Link to={`/cases/${c.id}/review`} aria-label={`Open ${c.ref}`}>
+                  <Link to={caseLink(c, "review")} aria-label={`Open ${c.ref}`}>
                     <PanelRightOpen />
                   </Link>
                 </Button>

@@ -1,22 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, ArrowRight, Download, FileSearch, Pause, Radio, RotateCcw, Route, WifiOff } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { api, apiUrl, unwrap, type StageEvent } from "@/api/client";
+import { api, unwrap, type StageEvent } from "@/api/client";
+import { FileLink } from "@/components/FileLink";
 import { EmptyState, ErrorNote, PageHeader, StatusBadge } from "@/components/common";
 import { StageCard } from "@/components/live/StageCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/primitives";
 import { Tip } from "@/components/ui/overlays";
+import { useCaseParam } from "@/hooks/useCaseParam";
 import { useCaseStream, type Connection } from "@/hooks/useCaseStream";
 import { stageOf, useConfig, type ResolvedConf } from "@/lib/config";
+import { caseLink } from "@/lib/nav";
 import { count, dateTime, duration, money, timeOfDay, usd } from "@/lib/format";
 import { ACTIVE_CASE_STATUSES, statusDef, toneStyle } from "@/lib/status";
 import { buildCards, groupRuns, totals, type RunGroup } from "@/lib/timeline";
-import { usePrefs } from "@/lib/prefs";
 import { cn } from "@/lib/utils";
+import { SampleBadge } from "@/components/caseColumns";
 
 function useNow(active: boolean): number {
   const [now, setNow] = useState(() => Date.now());
@@ -85,10 +88,10 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export default function LiveRunPage() {
-  const id = Number(useParams().id);
+  const param = useCaseParam();
+  const id = param.id ?? NaN;
   const qc = useQueryClient();
   const { data: cfg } = useConfig();
-  const { role } = usePrefs();
   const detail = useQuery({
     queryKey: ["case", id],
     queryFn: async () => unwrap(await api.GET("/api/cases/{case_id}", { params: { path: { case_id: id } } })),
@@ -158,7 +161,7 @@ export default function LiveRunPage() {
     if (follow.current && (anyActive || replaying) && cards.length > 3) bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [cards.length, anyActive, replaying]);
 
-  if (detail.error) return <ErrorNote error={detail.error} />;
+  if (param.error || detail.error) return <ErrorNote error={param.error ?? detail.error} />;
 
   const decision = statusDef("decision", c?.decision);
   return (
@@ -173,6 +176,7 @@ export default function LiveRunPage() {
           c ? (
             <span className="flex items-center gap-3">
               <span className="tabular">{c.ref}</span>
+              {c.is_sample && <SampleBadge />}
               <StatusBadge kind="case" value={status} pulse={status === "processing"} className="text-[13px]" />
             </span>
           ) : (
@@ -238,7 +242,7 @@ export default function LiveRunPage() {
                     onRetry={(s) => retry.mutate(s)}
                     retrying={retry.isPending}
                     replaying={replaying}
-                    canRerun={role === "admin"}
+                    canRerun
                   />
                 ))}
               </ol>
@@ -282,7 +286,7 @@ export default function LiveRunPage() {
             <div className="flex flex-wrap gap-2 border-t px-5 py-3">
               {status && !ACTIVE_CASE_STATUSES.has(status) && (c?.templates.length || c?.rule_results.length) ? (
                 <Button size="sm" variant={status === "needs_review" ? "default" : "outline"} asChild>
-                  <Link to={`/cases/${id}/review`}>
+                  <Link to={caseLink({ id, ref: c?.ref }, "review")}>
                     <FileSearch /> {status === "needs_review" ? "Open review" : "Workspace"}
                   </Link>
                 </Button>
@@ -293,9 +297,9 @@ export default function LiveRunPage() {
                 </Link>
               </Button>
               <Button size="sm" variant="outline" asChild>
-                <a href={apiUrl(`/api/cases/${id}/audit-pack`)}>
+                <FileLink path={`/api/cases/${id}/audit-pack`}>
                   <Download /> Audit pack
-                </a>
+                </FileLink>
               </Button>
             </div>
           </Card>
@@ -314,7 +318,7 @@ export default function LiveRunPage() {
           </Card>
 
           {status && !ACTIVE_CASE_STATUSES.has(status) && !replaying && (
-            <Link to="/scenarios" className="flex items-center justify-between rounded-lg border px-4 py-3 text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground">
+            <Link to="/launcher" className="flex items-center justify-between rounded-lg border px-4 py-3 text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground">
               Run another scenario <ArrowRight className="size-4" />
             </Link>
           )}

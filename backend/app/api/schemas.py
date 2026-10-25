@@ -162,7 +162,7 @@ class CaseOut(_ORM):
     created_at: datetime
     updated_at: datetime
     sla_due_at: datetime | None
-    seed: bool = False
+    is_sample: bool = False
     scenario_id: str | None = None
     approved_by: str | None = None
     approved_at: datetime | None = None
@@ -453,7 +453,8 @@ class DashboardOut(BaseModel):
     decision_keys: list[str]
     decision_mix: list[DecisionCountOut]
     exceptions_by_rule: list[RuleExceptionOut]
-    seeded_cases: int
+    sample_cases: int  # sample history cases in the range (shown or hidden)
+    include_samples: bool
     recent: list[CaseOut]
 
 

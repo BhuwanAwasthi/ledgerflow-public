@@ -6,6 +6,15 @@ import { money, relative } from "@/lib/format";
 
 type Col = ColumnDef<Case, unknown>;
 
+/** Seeded sample history (so the dashboard has shape on first open), never a run you made. */
+export function SampleBadge() {
+  return (
+    <Badge className="px-1.5 py-0 text-[10px]" title="Sample history seeded into your workspace, not a run you made">
+      Sample
+    </Badge>
+  );
+}
+
 const text = (v: unknown, filter: unknown) => String(v ?? "").toLowerCase().includes(String(filter).toLowerCase());
 
 export const caseCols = {
@@ -17,7 +26,7 @@ export const caseCols = {
     cell: ({ row }) => (
       <div className="flex items-center gap-2 whitespace-nowrap">
         <span className="font-medium tabular text-foreground">{row.original.ref}</span>
-        {row.original.seed && <Badge className="px-1.5 py-0 text-[10px]">seeded</Badge>}
+        {row.original.is_sample && <SampleBadge />}
       </div>
     ),
   } satisfies Col,
@@ -27,9 +36,9 @@ export const caseCols = {
     accessorFn: (c) => c.ref ?? `#${c.id}`,
     filterFn: (row, id, f) => text(row.getValue(id), f),
     cell: ({ row }) => (
-      <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-medium tabular" title={row.original.seed ? "Seeded demo data" : undefined}>
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-medium tabular">
         {row.original.ref}
-        {row.original.seed && <span className="size-1.5 rounded-full bg-muted-foreground/40" aria-label="seeded demo data" />}
+        {row.original.is_sample && <SampleBadge />}
       </span>
     ),
   } satisfies Col,

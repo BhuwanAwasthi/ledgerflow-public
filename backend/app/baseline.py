@@ -35,7 +35,7 @@ from app.seed import SeedReport, load_master, seed_history
 from app.storage import BASELINE_PREFIX, BaseStorage, Storage
 from app.tenancy import bind_owner, require_owner, scoped
 
-BASELINE_VERSION = 1
+BASELINE_VERSION = 2  # 2: sample history stores one summary stage_event per case
 FIXTURE_PREFIX = f"{BASELINE_PREFIX}fixtures/"
 KEEP_ON_RESET = frozenset({"config_versions"})  # Agent Studio edits are config, not demo data (P3 resets)
 BUSY = (CaseStatus.received, CaseStatus.processing)

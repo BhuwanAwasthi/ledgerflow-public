@@ -5,6 +5,7 @@ import { api, unwrap, type Case } from "@/api/client";
 import { caseCols } from "@/components/caseColumns";
 import { DataTable } from "@/components/DataTable";
 import { EmptyState, ErrorNote, PageHeader } from "@/components/common";
+import { caseLink } from "@/lib/nav";
 
 /** All cases, or the reviewer work queue (needs review + on hold, oldest SLA first). */
 export default function CasesPage({ queue }: { queue?: boolean }) {
@@ -18,7 +19,7 @@ export default function CasesPage({ queue }: { queue?: boolean }) {
   const rows: Case[] | undefined = queue
     ? q.data?.slice().sort((a, b) => (a.sla_due_at ?? "9").localeCompare(b.sla_due_at ?? "9"))
     : q.data?.filter((c) => c.status !== "split");
-  const open = (c: Case) => navigate(c.status === "needs_review" ? `/cases/${c.id}/review` : `/cases/${c.id}/live`);
+  const open = (c: Case) => navigate(c.status === "needs_review" ? caseLink(c, "review") : caseLink(c));
 
   return (
     <div>

@@ -128,6 +128,32 @@ def test_rerun_retries_a_failed_stage_and_sse_after(test_settings):
         assert client.get("/api/cases", params={"submitter_email": "nobody@x.com"}).json()["total"] == 0
 
 
+def test_sample_history_is_flagged_and_the_dashboard_can_hide_it(test_settings):
+    with auth_client(create_app(test_settings)) as client:
+        listing = client.get("/api/cases", params={"page_size": 200}).json()
+        assert listing["total"] == 40 and all(c["is_sample"] for c in listing["items"])
+
+        case = client.post("/api/cases", files=[("files", ("inv.pdf", b"%PDF-1.4 x", "application/pdf"))]).json()
+        assert case["is_sample"] is False
+        wait_status(client, case["id"], {"approved"})
+
+        shown = client.get("/api/dashboard/metrics", params={"range": "30d"}).json()
+        assert shown["include_samples"] is True and shown["sample_cases"] == 40
+        assert shown["kpis"]["cases"] == 41 and shown["kpis"]["llm_tokens"] > 0  # sample summary events count
+
+        hidden = client.get("/api/dashboard/metrics", params={"range": "30d", "include_samples": "false"}).json()
+        assert hidden["include_samples"] is False and hidden["sample_cases"] == 40  # the chip still knows
+        assert hidden["kpis"]["cases"] == 1 and shown["kpis"]["decided"] - hidden["kpis"]["decided"] == 40
+        assert sum(p["cases"] for p in hidden["series"]) == 1 and hidden["exceptions_by_rule"] == []
+        assert [c["id"] for c in hidden["recent"]] == [case["id"]]
+        assert hidden["kpis"]["llm_tokens"] == 0  # stub agents: no tokens outside the samples
+
+        assert client.get("/api/approved").json()["total"] == 1  # samples never reach the approved library
+        client.post("/api/me/reset-workspace")
+        again = client.get("/api/cases", params={"page_size": 200}).json()
+        assert again["total"] == 40 and all(c["is_sample"] for c in again["items"])  # reset reseeds the samples
+
+
 def test_status_text_placeholders_and_exception_decisions_are_validated(config_files: dict[str, str]):
     def bad(d: dict) -> None:
         d["ui"]["status_text"]["on_hold"] = "Waiting for {label.__class__} {vendor}"

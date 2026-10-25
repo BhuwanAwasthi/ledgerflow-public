@@ -1,11 +1,12 @@
 /**
  * Live stage_events for one case over SSE. The server replays stored events first, so a fresh page and a
  * reconnect both converge on the full history. On a drop we reconnect with backoff, passing `after=<last seq>`
- * so nothing is duplicated or lost.
+ * so nothing is duplicated or lost. Each connection authenticates with a 60-second single-use stream token
+ * (`?t=`), never the access token.
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { apiUrl, type StageEvent } from "@/api/client";
+import { api, apiUrl, unwrap, type StageEvent } from "@/api/client";
 
 export type Connection = "connecting" | "live" | "reconnecting";
 
@@ -46,9 +47,23 @@ export function useCaseStream(caseId: number | null, enabled = true): StreamStat
     lastSeq.current = 0;
     setState({ events: [], progress: {}, summary: null, connection: "connecting", attempts: 0 });
 
-    const connect = () => {
-      const url = apiUrl(`/api/cases/${caseId}/events/stream${lastSeq.current ? `?after=${lastSeq.current}` : ""}`);
-      es = new EventSource(url);
+    const retryLater = () => {
+      if (closed) return;
+      attempts += 1;
+      setState((s) => ({ ...s, connection: "reconnecting", attempts }));
+      retry = window.setTimeout(connect, Math.min(1000 * 2 ** (attempts - 1), 10_000));
+    };
+
+    const connect = async () => {
+      // EventSource can't send the Authorization header: every (re)connect redeems a fresh single-use token
+      let path: string;
+      try {
+        path = unwrap(await api.POST("/api/cases/{case_id}/stream-token", { params: { path: { case_id: caseId } } })).url;
+      } catch {
+        return retryLater();
+      }
+      if (closed) return;
+      es = new EventSource(apiUrl(`${path}${lastSeq.current ? `&after=${lastSeq.current}` : ""}`));
       es.onopen = () => {
         attempts = 0;
         setState((s) => ({ ...s, connection: "live", attempts: 0 }));
@@ -73,13 +88,10 @@ export function useCaseStream(caseId: number | null, enabled = true): StreamStat
       });
       es.onerror = () => {
         es?.close();
-        if (closed) return;
-        attempts += 1;
-        setState((s) => ({ ...s, connection: "reconnecting", attempts }));
-        retry = window.setTimeout(connect, Math.min(1000 * 2 ** (attempts - 1), 10_000));
+        retryLater();
       };
     };
-    connect();
+    void connect();
     return () => {
       closed = true;
       es?.close();

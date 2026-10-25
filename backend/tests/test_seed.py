@@ -16,6 +16,7 @@ from app.seed import SeedError, load_master, run_seed
 from app.settings import REPO_ROOT, Settings
 from app.storage import LocalStorage, OwnerStorage
 from app.tenancy import bind_owner
+from scripts.measure_workspace import BUDGET_B, measure
 from tests.conftest import ALICE, CONFIG_DIR, add_user, auth_client
 from tests.test_api import wait_status
 
@@ -44,16 +45,18 @@ def test_workspace_seed_loads_master_and_history(engine_factory, tmp_path):
         assert s.scalar(select(Vendor).where(Vendor.code == "V004")).non_po_allowed is True
 
         cases = s.scalars(select(Case)).all()
-        assert len(cases) == 40 and all(c.seed and c.owner_id == ALICE.id for c in cases)
+        assert len(cases) == 40 and all(c.is_sample and c.owner_id == ALICE.id for c in cases)
         assert {c.decision for c in cases} <= {"auto_approve", "needs_review", "on_hold", "reject"}
         assert {c.status for c in cases} <= {"approved", "rejected"}  # never pollutes the work queue
-        assert all(c.ref and c.decision_summary.startswith("Seeded demo data") for c in cases)
+        assert all(c.ref and c.decision_summary.startswith("Sample history") for c in cases)
         for c in cases:
             fails = _count(s, RuleResult, RuleResult.case_id == c.id)
             assert (fails == 0) == (c.decision == "auto_approve"), c.ref
-            last = s.scalars(select(StageEvent).where(StageEvent.case_id == c.id).order_by(StageEvent.seq)).all()
-            assert last[0].stage_id == "intake" and last[-1].stage_id == "decide"
-            assert last[-1].outcome == c.decision
+            # one summary event, no per-stage payloads, no agent (Agent Studio stats count real runs only)
+            [ev] = s.scalars(select(StageEvent).where(StageEvent.case_id == c.id)).all()
+            assert ev.stage_id == "decide" and ev.outcome == c.decision and ev.agent_id is None
+            assert ev.input_summary == {} and ev.output == {}
+            assert ev.metrics["tokens_in"] > 0 and ev.metrics["cost_usd"] > 0 and ev.ended_at > ev.started_at
 
     # idempotent: a second sign-in seeds nothing more
     baseline.ensure_workspace(engine_factory, ALICE.id)
@@ -69,9 +72,20 @@ def test_workspace_seed_loads_master_and_history(engine_factory, tmp_path):
     assert rep.history_cases == 40
     with bind_owner(engine_factory, ALICE.id)() as s:
         assert _count(s, Vendor) == 7 and _count(s, Case) == 40
+        assert _count(s, Case, Case.is_sample.is_(True)) == 40 and _count(s, StageEvent) == 40  # samples reseeded
         po = s.scalars(select(PurchaseOrder).where(PurchaseOrder.po_number == "PO-1001")).one()
         assert po.amount == Decimal("10000.00")
         assert s.get(User, ALICE.id).case_seq == 40
+
+
+def test_a_new_workspace_adds_well_under_200_kb(tmp_path, capsys):
+    """Supabase free has 500 MB: master data plus 40 sample cases must stay small per visitor."""
+    fp = measure(users=3, workdir=tmp_path)
+    with capsys.disabled():
+        print(f"\n  new workspace: {fp.sqlite_bytes / 1024:.1f} KB SQLite (measured), "
+              f"{fp.postgres_estimate_bytes / 1024:.1f} KB Postgres (estimate), {fp.row_count} rows")
+    assert fp.rows["cases"] == 40 and fp.rows["stage_events"] == 40
+    assert fp.sqlite_bytes < BUDGET_B / 2 and fp.postgres_estimate_bytes < BUDGET_B
 
 
 def test_make_seed_resets_to_an_empty_migrated_database(test_settings: Settings):
@@ -109,7 +123,7 @@ def test_fixtures_api_lists_and_runs_scenarios(test_settings: Settings):
         r = client.post("/api/fixtures/S01_happy/run")
         assert r.status_code == 201, r.text
         case = r.json()
-        assert case["source"] == "fixture" and case["seed"] is False
+        assert case["source"] == "fixture" and case["is_sample"] is False
         assert case["submitter_email"] == "billing@acme-office.example"
         detail = wait_status(client, case["id"], {"approved"})
         doc = detail["documents"][0]

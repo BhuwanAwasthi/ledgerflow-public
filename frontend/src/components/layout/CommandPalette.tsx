@@ -8,8 +8,9 @@ import { toast } from "sonner";
 import { api, unwrap } from "@/api/client";
 import { StatusBadge } from "@/components/common";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/overlays";
-import { navFor } from "@/lib/nav";
+import { caseLink, navFor } from "@/lib/nav";
 import { usePrefs } from "@/lib/prefs";
+import { SampleBadge } from "@/components/caseColumns";
 
 const item =
   "flex cursor-default select-none items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] outline-none data-[selected=true]:bg-muted aria-selected:bg-muted";
@@ -40,7 +41,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     mutationFn: async (id: string) => unwrap(await api.POST("/api/fixtures/{scenario_id}/run", { params: { path: { scenario_id: id } } })),
     onSuccess: (c) => {
       toast.success(`${c.ref} started`, { description: "Watching it live." });
-      navigate(`/cases/${c.id}/live`);
+      navigate(caseLink(c));
     },
     onError: (e) => toast.error("Could not start the scenario", { description: e instanceof Error ? e.message : undefined }),
   });
@@ -69,11 +70,12 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                   <Command.Item
                     key={c.id}
                     value={`case ${c.ref} ${c.vendor_name ?? ""} ${c.invoice_number ?? ""} ${c.submitter_name ?? ""}`}
-                    onSelect={() => go(() => navigate(`/cases/${c.id}/live`))}
+                    onSelect={() => go(() => navigate(caseLink(c)))}
                     className={item}
                   >
                     <FileText className="size-4 text-muted-foreground" />
                     <span className="font-medium tabular">{c.ref}</span>
+                    {c.is_sample && <SampleBadge />}
                     <span className="truncate text-muted-foreground">{c.vendor_name ?? c.submitter_name}</span>
                     <span className="ml-auto">
                       <StatusBadge kind="case" value={c.status} />

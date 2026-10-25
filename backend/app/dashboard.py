@@ -34,7 +34,11 @@ def _aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
-def metrics(s: Session, cfg: ResolvedConfig, range_value: str | None, now: datetime | None = None) -> dict[str, Any]:
+def metrics(
+    s: Session, cfg: ResolvedConfig, range_value: str | None, now: datetime | None = None, *,
+    include_samples: bool = True,
+) -> dict[str, Any]:
+    """`include_samples=False` leaves the seeded sample history out of every KPI and series."""
     dash = cfg.app.ui.dashboard
     label, days = parse_range(cfg, range_value)
     now = now or datetime.now(UTC)
@@ -42,9 +46,10 @@ def metrics(s: Session, cfg: ResolvedConfig, range_value: str | None, now: datet
     since = datetime.combine(start_day, datetime.min.time(), tzinfo=UTC)
 
     owner = require_owner(s)
-    cases = s.scalars(
+    in_range = s.scalars(
         scoped(select(Case).where(Case.created_at >= since, Case.status.not_in(EXCLUDED)), owner).order_by(Case.id)
     ).all()
+    cases = [c for c in in_range if include_samples or not c.is_sample]
     ids = [c.id for c in cases]
     reviewed = set(
         s.scalars(scoped(select(ReviewActionRow.case_id).where(ReviewActionRow.case_id.in_(ids)), owner).distinct()).all()
@@ -126,6 +131,8 @@ def metrics(s: Session, cfg: ResolvedConfig, range_value: str | None, now: datet
     ]
 
     live_q = scoped(select(Case.status, func.count()), owner).group_by(Case.status)
+    if not include_samples:
+        live_q = live_q.where(Case.is_sample.is_(False))
     live: dict[str, int] = {str(st): int(cnt) for st, cnt in s.execute(live_q)}
     n = len(cases)
     return {
@@ -151,5 +158,6 @@ def metrics(s: Session, cfg: ResolvedConfig, range_value: str | None, now: datet
         "decision_keys": decisions,
         "decision_mix": [{"decision": d, "cases": sum(1 for c in decided if c.decision == d)} for d in decisions],
         "exceptions_by_rule": exceptions_by_rule,
-        "seeded_cases": sum(1 for c in cases if c.seed),
+        "sample_cases": sum(1 for c in in_range if c.is_sample),  # in range, whether shown or not
+        "include_samples": include_samples,
     }

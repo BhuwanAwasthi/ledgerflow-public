@@ -7,6 +7,31 @@ export const API_URL: string = (import.meta.env.VITE_API_URL as string | undefin
 
 export const api = createClient<paths>({ baseUrl: API_URL });
 
+/**
+ * Every API call carries `Authorization: Bearer <access token>`. The token source and the 401 handler are
+ * installed by AuthProvider (lib/auth.tsx): it knows whether the session is Supabase's or the dev stub's,
+ * refreshes silently, and shows "Session expired" when a refresh fails.
+ */
+let tokenSource: () => Promise<string | null> = async () => null;
+let onUnauthorized: () => void = () => {};
+
+export function configureAuth(source: () => Promise<string | null>, unauthorized: () => void): void {
+  tokenSource = source;
+  onUnauthorized = unauthorized;
+}
+
+api.use({
+  async onRequest({ request }) {
+    const token = await tokenSource();
+    if (token) request.headers.set("Authorization", `Bearer ${token}`);
+    return request;
+  },
+  onResponse({ response }) {
+    if (response.status === 401) onUnauthorized();
+    return response;
+  },
+});
+
 type S = components["schemas"];
 export type Case = S["CaseOut"];
 export type CaseDetail = S["CaseDetailOut"];
@@ -88,4 +113,25 @@ export function unwrap<T>(r: { data?: T; error?: unknown; response: Response }):
 
 export function apiUrl(path: string): string {
   return `${API_URL}${path}`;
+}
+
+export type Me = S["MeOut"];
+
+/**
+ * A 60-second link to one file route (PDF, page PNG, template, ZIP, audit pack, CSV) for <img>, react-pdf
+ * and downloads, which cannot send the Authorization header. Never put the access token in a URL.
+ */
+export async function signedFileUrl(path: string): Promise<string> {
+  const r = unwrap(await api.POST("/api/me/file-token", { body: { path } }));
+  return apiUrl(r.url);
+}
+
+/** Download a file route through a fresh file token (the server sends Content-Disposition). */
+export async function downloadFile(path: string): Promise<void> {
+  const a = document.createElement("a");
+  a.href = await signedFileUrl(path);
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }

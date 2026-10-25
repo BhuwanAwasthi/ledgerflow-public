@@ -249,7 +249,7 @@ class Case(TenantMixin, Base):
     created_at: Mapped[datetime] = _ts()
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
     sla_due_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
-    seed: Mapped[bool] = mapped_column(Boolean, default=False)  # seeded demo history (labelled in the UI)
+    is_sample: Mapped[bool] = mapped_column(Boolean, default=False)  # seeded sample history ("Sample" badge in the UI)
     scenario_id: Mapped[str | None] = mapped_column(String(64), index=True)  # launcher runs (dependencies)
     approved_by: Mapped[str | None] = mapped_column(String(128))  # reviewer, or "auto" (set at finalize)
     approved_at: Mapped[datetime | None] = mapped_column(UTCDateTime())

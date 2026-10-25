@@ -18,7 +18,8 @@ import {
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { api, apiUrl, unwrap, type Vendor, type VendorRequest } from "@/api/client";
+import { api, unwrap, type Vendor, type VendorRequest } from "@/api/client";
+import { FileLink } from "@/components/FileLink";
 import { caseCols } from "@/components/caseColumns";
 import { DataTable } from "@/components/DataTable";
 import { EmptyState, ErrorNote, PageHeader, StatusBadge } from "@/components/common";
@@ -27,10 +28,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogTitle, Tip } from "@/components/ui/overlays";
 import { Badge, Skeleton, Textarea } from "@/components/ui/primitives";
 import { dateTime, humanise, relative } from "@/lib/format";
-import { roleLabel, usePrefs } from "@/lib/prefs";
+import { useActor } from "@/lib/auth";
 import { useConfig } from "@/lib/config";
 import { statusDef } from "@/lib/status";
 import { cn } from "@/lib/utils";
+import { caseLink } from "@/lib/nav";
 
 const text = (v: unknown, f: unknown) => String(v ?? "").toLowerCase().includes(String(f).toLowerCase());
 
@@ -76,9 +78,9 @@ export function VendorsPage() {
           <>
             {pending > 0 && <StatusBadge kind="vendor" value="pending_docs" className="mr-1" />}
             <Button variant="outline" size="sm" asChild>
-              <a href={apiUrl("/api/master/vendors.csv")}>
+              <FileLink path={"/api/master/vendors.csv"}>
                 <Download /> Export CSV
-              </a>
+              </FileLink>
             </Button>
           </>
         }
@@ -169,7 +171,7 @@ export function VendorDetailPage() {
   const { id } = useParams();
   const vendorId = Number(id);
   const qc = useQueryClient();
-  const { role } = usePrefs();
+  const actor = useActor();
   const navigate = useNavigate();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -185,13 +187,13 @@ export function VendorDetailPage() {
     toast.success(`Vendor ${verb}`, { description: [...r.notes, resumed].filter(Boolean).join(" ") || undefined });
   };
   const approve = useMutation({
-    mutationFn: async () => unwrap(await api.POST("/api/vendors/{vendor_id}/approve", { params: { path: { vendor_id: vendorId } }, body: { actor: roleLabel(role) } })),
+    mutationFn: async () => unwrap(await api.POST("/api/vendors/{vendor_id}/approve", { params: { path: { vendor_id: vendorId } }, body: { actor } })),
     onSuccess: done("approved"),
     onError: (e) => toast.error("Could not approve", { description: e instanceof Error ? e.message : undefined }),
   });
   const reject = useMutation({
     mutationFn: async () =>
-      unwrap(await api.POST("/api/vendors/{vendor_id}/reject", { params: { path: { vendor_id: vendorId } }, body: { actor: roleLabel(role), reason: reason || null } })),
+      unwrap(await api.POST("/api/vendors/{vendor_id}/reject", { params: { path: { vendor_id: vendorId } }, body: { actor, reason: reason || null } })),
     onSuccess: done("rejected"),
     onError: (e) => toast.error("Could not reject", { description: e instanceof Error ? e.message : undefined }),
   });
@@ -306,7 +308,7 @@ export function VendorDetailPage() {
             {v.open_cases.length === 0 ? (
               <div className="text-[13px] text-muted-foreground">No open invoices.</div>
             ) : (
-              <DataTable id="vendor-cases" data={v.open_cases} columns={[caseCols.ref, caseCols.invoice, caseCols.total, caseCols.status, caseCols.reason]} searchable={false} maxHeight="320px" onRowClick={(c) => navigate(`/cases/${c.id}/${c.status === "needs_review" ? "review" : "live"}`)} />
+              <DataTable id="vendor-cases" data={v.open_cases} columns={[caseCols.ref, caseCols.invoice, caseCols.total, caseCols.status, caseCols.reason]} searchable={false} maxHeight="320px" onRowClick={(c) => navigate(caseLink(c, c.status === "needs_review" ? "review" : undefined))} />
             )}
           </CardContent>
         </Card>

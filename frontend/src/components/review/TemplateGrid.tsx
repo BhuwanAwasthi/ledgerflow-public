@@ -1,6 +1,7 @@
 import { Download, Pencil, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { apiUrl, type CellFlag, type GridOp, type TemplateVersion, type Workspace, type WorkspaceColumn } from "@/api/client";
+import { type CellFlag, type GridOp, type TemplateVersion, type Workspace, type WorkspaceColumn } from "@/api/client";
+import { FileLink } from "@/components/FileLink";
 import { Button } from "@/components/ui/button";
 import { Tip } from "@/components/ui/overlays";
 import { Badge, Input } from "@/components/ui/primitives";
@@ -198,9 +199,9 @@ export function TemplateGrid({
             </button>
           )}
           <Button variant="ghost" size="xs" asChild>
-            <a href={apiUrl(`/api/cases/${caseId}/template/${tv.version}/download`)}>
+            <FileLink path={`/api/cases/${caseId}/template/${tv.version}/download`}>
               <Download /> v{tv.version}
-            </a>
+            </FileLink>
           </Button>
         </div>
       </div>

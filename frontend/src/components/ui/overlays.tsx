@@ -60,6 +60,17 @@ export function DropdownMenuContent({ className, sideOffset = 6, ...p }: Compone
 export function DropdownMenuLabel({ className, ...p }: ComponentPropsWithoutRef<typeof M.Label>) {
   return <M.Label className={cn("px-2 py-1.5 text-xs font-medium text-muted-foreground", className)} {...p} />;
 }
+export function DropdownMenuItem({ className, ...p }: ComponentPropsWithoutRef<typeof M.Item>) {
+  return (
+    <M.Item
+      className={cn("flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none data-[highlighted]:bg-muted", className)}
+      {...p}
+    />
+  );
+}
+export function DropdownMenuSeparator({ className, ...p }: ComponentPropsWithoutRef<typeof M.Separator>) {
+  return <M.Separator className={cn("-mx-1 my-1 h-px bg-border", className)} {...p} />;
+}
 export function DropdownMenuRadioItem({ className, children, ...p }: ComponentPropsWithoutRef<typeof M.RadioItem>) {
   return (
     <M.RadioItem

@@ -296,6 +296,11 @@
             ],
             "title": "Invoice Number"
           },
+          "is_sample": {
+            "default": false,
+            "title": "Is Sample",
+            "type": "boolean"
+          },
           "latest_template_version": {
             "anyOf": [
               {
@@ -365,10 +370,16 @@
             "title": "Rule Results",
             "type": "array"
           },
-          "seed": {
-            "default": false,
-            "title": "Seed",
-            "type": "boolean"
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
           },
           "sla_due_at": {
             "anyOf": [
@@ -666,6 +677,11 @@
             ],
             "title": "Invoice Number"
           },
+          "is_sample": {
+            "default": false,
+            "title": "Is Sample",
+            "type": "boolean"
+          },
           "latest_template_version": {
             "anyOf": [
               {
@@ -721,10 +737,16 @@
             ],
             "title": "Ref"
           },
-          "seed": {
-            "default": false,
-            "title": "Seed",
-            "type": "boolean"
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
           },
           "sla_due_at": {
             "anyOf": [
@@ -1288,6 +1310,10 @@
             "title": "Exceptions By Rule",
             "type": "array"
           },
+          "include_samples": {
+            "title": "Include Samples",
+            "type": "boolean"
+          },
           "kpis": {
             "$ref": "#/components/schemas/DashboardKpisOut"
           },
@@ -1309,8 +1335,8 @@
             "title": "Recent",
             "type": "array"
           },
-          "seeded_cases": {
-            "title": "Seeded Cases",
+          "sample_cases": {
+            "title": "Sample Cases",
             "type": "integer"
           },
           "series": {
@@ -1337,7 +1363,8 @@
           "decision_keys",
           "decision_mix",
           "exceptions_by_rule",
-          "seeded_cases",
+          "sample_cases",
+          "include_samples",
           "recent"
         ],
         "title": "DashboardOut",
@@ -1657,6 +1684,20 @@
         "title": "ExtractionOut",
         "type": "object"
       },
+      "FileTokenIn": {
+        "properties": {
+          "path": {
+            "description": "API path of a file route, e.g. /api/cases/1/documents/2/file",
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "FileTokenIn",
+        "type": "object"
+      },
       "FixtureFileOut": {
         "properties": {
           "available": {
@@ -1714,6 +1755,14 @@
             "title": "Render",
             "type": "string"
           },
+          "requires": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Requires",
+            "type": "array"
+          },
           "run_order": {
             "anyOf": [
               {
@@ -1766,6 +1815,10 @@
       },
       "HealthOut": {
         "properties": {
+          "auth_mode": {
+            "title": "Auth Mode",
+            "type": "string"
+          },
           "config_hash": {
             "anyOf": [
               {
@@ -1798,7 +1851,8 @@
           "ok",
           "db",
           "storage",
-          "llm_path"
+          "llm_path",
+          "auth_mode"
         ],
         "title": "HealthOut",
         "type": "object"
@@ -1951,6 +2005,80 @@
           "notes"
         ],
         "title": "MasterImportOut",
+        "type": "object"
+      },
+      "MeOut": {
+        "properties": {
+          "auth_mode": {
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "baseline_current": {
+            "title": "Baseline Current",
+            "type": "integer"
+          },
+          "baseline_outdated": {
+            "title": "Baseline Outdated",
+            "type": "boolean"
+          },
+          "baseline_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Version"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "avatar_url",
+          "mode",
+          "baseline_version",
+          "baseline_current",
+          "baseline_outdated",
+          "auth_mode"
+        ],
+        "title": "MeOut",
         "type": "object"
       },
       "NotificationOut": {
@@ -2708,6 +2836,49 @@
         "title": "RerunIn",
         "type": "object"
       },
+      "ResetWorkspaceOut": {
+        "properties": {
+          "baseline_version": {
+            "title": "Baseline Version",
+            "type": "integer"
+          },
+          "gl_accounts": {
+            "title": "Gl Accounts",
+            "type": "integer"
+          },
+          "grns": {
+            "title": "Grns",
+            "type": "integer"
+          },
+          "history_cases": {
+            "title": "History Cases",
+            "type": "integer"
+          },
+          "po_lines": {
+            "title": "Po Lines",
+            "type": "integer"
+          },
+          "purchase_orders": {
+            "title": "Purchase Orders",
+            "type": "integer"
+          },
+          "vendors": {
+            "title": "Vendors",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "vendors",
+          "purchase_orders",
+          "po_lines",
+          "grns",
+          "gl_accounts",
+          "history_cases",
+          "baseline_version"
+        ],
+        "title": "ResetWorkspaceOut",
+        "type": "object"
+      },
       "ReviewActionOut": {
         "properties": {
           "action": {
@@ -2909,6 +3080,374 @@
         "title": "RuleResultOut",
         "type": "object"
       },
+      "ScenarioCaseOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          }
+        },
+        "required": [
+          "id",
+          "ref",
+          "scenario_id"
+        ],
+        "title": "ScenarioCaseOut",
+        "type": "object"
+      },
+      "ScenarioRunOut": {
+        "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "config_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Hash"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "current_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Stage"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
+          "decision_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Summary"
+          },
+          "exported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exported At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "invoice_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Date"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
+          },
+          "is_sample": {
+            "default": false,
+            "title": "Is Sample",
+            "type": "boolean"
+          },
+          "latest_template_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Template Version"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "parent_case_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Case Id"
+          },
+          "po_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Po Id"
+          },
+          "prerequisites": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ScenarioCaseOut"
+            },
+            "title": "Prerequisites",
+            "type": "array"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "sla_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sla Due At"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Label"
+          },
+          "submitter_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitter Email"
+          },
+          "submitter_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitter Name"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "vendor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Id"
+          },
+          "vendor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Name"
+          }
+        },
+        "required": [
+          "id",
+          "ref",
+          "parent_case_id",
+          "submitter_name",
+          "submitter_email",
+          "note",
+          "source",
+          "status",
+          "current_stage",
+          "decision",
+          "decision_summary",
+          "vendor_id",
+          "po_id",
+          "currency",
+          "total",
+          "confidence",
+          "config_hash",
+          "created_at",
+          "updated_at",
+          "sla_due_at"
+        ],
+        "title": "ScenarioRunOut",
+        "type": "object"
+      },
       "SetFieldOp": {
         "additionalProperties": false,
         "properties": {
@@ -2982,6 +3521,24 @@
           "department"
         ],
         "title": "SetGLOp",
+        "type": "object"
+      },
+      "SignedUrlOut": {
+        "properties": {
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_in"
+        ],
+        "title": "SignedUrlOut",
         "type": "object"
       },
       "StageEventOut": {
@@ -4164,6 +4721,49 @@
         ]
       }
     },
+    "/api/cases/by-ref/{ref}": {
+      "get": {
+        "description": "The case with this ref (e.g. INV-2026-0003) in the caller's workspace: the SPA's /cases/:ref links.\nRefs are per workspace, so another user's ref resolves to their own case or 404.",
+        "operationId": "get_case_by_ref_api_cases_by_ref__ref__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ref",
+            "required": true,
+            "schema": {
+              "title": "Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Case By Ref",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
     "/api/cases/{case_id}": {
       "get": {
         "operationId": "get_case_api_cases__case_id__get",
@@ -4355,7 +4955,7 @@
     },
     "/api/cases/{case_id}/events/stream": {
       "get": {
-        "description": "SSE: replays stored stage_events (after Last-Event-ID, or `after` = the last seq the client has, for a\nmanual reconnect), then streams live `stage_event`, `case_updated` and `progress` events.\n`follow=false` closes after the replay.",
+        "description": "SSE: replays stored stage_events (after Last-Event-ID, or `after` = the last seq the client has, for a\nmanual reconnect), then streams live `stage_event`, `case_updated` and `progress` events.\n`follow=false` closes after the replay. Authenticates with the Authorization header or with `?t=`, a token\nfrom POST /stream-token (app.auth).",
         "operationId": "stream_events_api_cases__case_id__events_stream_get",
         "parameters": [
           {
@@ -4579,6 +5179,49 @@
           }
         },
         "summary": "Review",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/cases/{case_id}/stream-token": {
+      "post": {
+        "description": "A single-use, 60-second token for the SSE stream (browser EventSource cannot send the Authorization\nheader): open `url` within the minute.",
+        "operationId": "stream_token_api_cases__case_id__stream_token_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedUrlOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Token",
         "tags": [
           "cases"
         ]
@@ -4993,6 +5636,18 @@
               "description": "one of app.yaml ui.dashboard.ranges",
               "title": "Range"
             }
+          },
+          {
+            "description": "false: leave the sample history out",
+            "in": "query",
+            "name": "include_samples",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "false: leave the sample history out",
+              "title": "Include Samples",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -5154,7 +5809,7 @@
     },
     "/api/fixtures/{scenario_id}/files/{filename}": {
       "get": {
-        "description": "Download a scenario's PDF or one of its supporting files (e.g. the S05 W-9 for the vendor portal).",
+        "description": "Download a scenario's PDF or one of its supporting files (e.g. the S05 W-9 for the vendor portal),\nfrom the shared read-only baseline copy.",
         "operationId": "fixture_file_api_fixtures__scenario_id__files__filename__get",
         "parameters": [
           {
@@ -5178,6 +5833,11 @@
         ],
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
             "description": "Successful Response"
           },
           "422": {
@@ -5199,7 +5859,7 @@
     },
     "/api/fixtures/{scenario_id}/run": {
       "post": {
-        "description": "Create a case from the scenario's fixture file (source=fixture) and queue it.",
+        "description": "Create a case from the scenario's fixture file (source=fixture) and queue it, after the cases of any\nprerequisite scenario it had to run first (each one starts when the previous run ends).",
         "operationId": "run_fixture_api_fixtures__scenario_id__run_post",
         "parameters": [
           {
@@ -5217,7 +5877,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CaseOut"
+                  "$ref": "#/components/schemas/ScenarioRunOut"
                 }
               }
             },
@@ -5341,6 +6001,91 @@
         "summary": "Import Master",
         "tags": [
           "master data"
+        ]
+      }
+    },
+    "/api/me": {
+      "get": {
+        "operationId": "get_me_api_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Me",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/me/file-token": {
+      "post": {
+        "description": "A 60-second link to one file route (PDF, page PNG, template, ZIP, audit pack) for <img>, react-pdf and\ndownload links, which cannot send the Authorization header. The route still checks ownership.",
+        "operationId": "file_token_api_me_file_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileTokenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedUrlOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "File Token",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/me/reset-workspace": {
+      "post": {
+        "description": "Wipe this workspace (cases, documents, exports, master data, files) and seed the demo data again.\nAgent Studio config edits are kept.",
+        "operationId": "reset_workspace_api_me_reset_workspace_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetWorkspaceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Reset Workspace",
+        "tags": [
+          "me"
         ]
       }
     },
@@ -5761,6 +6506,7 @@
     },
     "/healthz": {
       "get": {
+        "description": "The only public route (app.auth.PUBLIC_PATHS): liveness, DB, storage and the auth mode.",
         "operationId": "healthz_healthz_get",
         "responses": {
           "200": {

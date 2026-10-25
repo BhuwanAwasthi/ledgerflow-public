@@ -1,15 +1,24 @@
 import { FileText, Minus, Plus, ScanLine } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { apiUrl, type DocumentInfo } from "@/api/client";
+import type { DocumentInfo } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Tip } from "@/components/ui/overlays";
 import { Badge, Skeleton } from "@/components/ui/primitives";
+import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { humanise } from "@/lib/format";
 import { toneStyle } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+// one plain GET per document: range/stream requests would come back after the 60 s file token expired
+const PDF_OPTIONS = { disableRange: true, disableStream: true, disableAutoFetch: true };
+
+/** A rendered page PNG, through its own file token (the fallback for files the browser can't read). */
+function PagePng({ path, alt }: { path: string; alt: string }) {
+  const { url } = useSignedUrl(path);
+  return url ? <img src={url} alt={alt} className="block w-full" /> : <Skeleton className="aspect-[1/1.294] w-full rounded-none" />;
+}
 
 export interface FieldBox {
   field: string;
@@ -89,7 +98,8 @@ function DocumentPages({
   const [ref, width] = useWidth<HTMLDivElement>();
   const [pages, setPages] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
-  const file = apiUrl(`/api/cases/${caseId}/documents/${doc.id}/file`);
+  const signed = useSignedUrl(`/api/cases/${caseId}/documents/${doc.id}/file`);
+  const file = useMemo(() => (signed.url ? { url: signed.url } : null), [signed.url]);
   const pageWidth = Math.max(240, Math.round(width * zoom));
   const count = pages ?? doc.pages ?? 1;
 
@@ -116,14 +126,17 @@ function DocumentPages({
 
   return (
     <div ref={ref} className="px-4 pt-4">
-      {failed ? (
+      {failed || signed.error ? (
         // not a PDF the browser can read: fall back to the PNGs intake rendered
         Array.from({ length: doc.pages ?? 1 }, (_, i) =>
-          pageBlock(i + 1, <img src={apiUrl(`/api/cases/${caseId}/documents/${doc.id}/pages/${i + 1}.png`)} alt={`${doc.filename} page ${i + 1}`} className="block w-full" />),
+          pageBlock(i + 1, <PagePng path={`/api/cases/${caseId}/documents/${doc.id}/pages/${i + 1}.png`} alt={`${doc.filename} page ${i + 1}`} />),
         )
+      ) : !file ? (
+        <Skeleton className="mx-auto aspect-[1/1.294] rounded-sm" style={{ width: pageWidth || "100%" }} />
       ) : (
         <Document
           file={file}
+          options={PDF_OPTIONS}
           onLoadSuccess={(d) => setPages(d.numPages)}
           onLoadError={() => setFailed(true)}
           loading={<Skeleton className="mx-auto aspect-[1/1.294] rounded-sm" style={{ width: pageWidth || "100%" }} />}

@@ -24,15 +24,18 @@ def dashboard_metrics(
     orch: Annotated[Orchestrator, Depends(get_orchestrator)],
     cfg: Annotated[ResolvedConfig, Depends(current_config)],
     range_: Annotated[str | None, Query(alias="range", description="one of app.yaml ui.dashboard.ranges")] = None,
+    include_samples: Annotated[bool, Query(description="false: leave the sample history out")] = True,
 ) -> dict[str, Any]:
     """KPIs, cases over time, exceptions by rule, decision mix and recent cases (ranges from app.yaml `ui`)."""
     try:
-        out = metrics(s, cfg, range_)
+        out = metrics(s, cfg, range_, include_samples=include_samples)
     except RangeError as e:
         raise HTTPException(422, str(e)) from e
+    stmt = scoped(select(Case).where(Case.status.not_in(EXCLUDED)), require_owner(s))
+    if not include_samples:
+        stmt = stmt.where(Case.is_sample.is_(False))
     recent = s.scalars(
-        scoped(select(Case).where(Case.status.not_in(EXCLUDED)), require_owner(s))
-        .order_by(Case.id.desc())
+        stmt.order_by(Case.id.desc())
         .limit(cfg.app.ui.dashboard.recent_cases)
     ).all()
     out["recent"] = [case_out(s, orch, c) for c in recent]
