@@ -1,4 +1,8 @@
-"""SQLAlchemy models: every table in SPEC section 6. Created with create_all at startup (no Alembic)."""
+"""SQLAlchemy models: every table in SPEC section 6, plus users and stream tokens. The schema is built by the
+Alembic migrations in backend/migrations (tests assert they match these models).
+
+Tenancy: every workspace table mixes in `TenantMixin` (owner_id, indexed, NOT NULL). Reads and writes are
+scoped to the owner by app.tenancy (`scoped()` plus the owner-bound session guard)."""
 
 from __future__ import annotations
 
@@ -89,10 +93,42 @@ def _ts() -> Mapped[datetime]:
     return mapped_column(UTCDateTime(), default=utcnow)
 
 
-class Vendor(Base):
+class UserMode(StrEnum):
+    unset = "unset"
+    demo = "demo"
+    byok = "byok"
+
+
+class User(Base):
+    """A signed-in person (id = the Supabase auth user id). Not a tenant table: it is the tenant."""
+
+    __tablename__ = "users"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    email: Mapped[str] = mapped_column(String(320))
+    name: Mapped[str | None] = mapped_column(String(255))
+    avatar_url: Mapped[str | None] = mapped_column(String(1024))
+    mode: Mapped[str] = mapped_column(String(8), default=UserMode.unset)
+    tour_state: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    preferences: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    baseline_version: Mapped[int | None] = mapped_column(Integer)  # None = workspace not seeded yet
+    case_seq: Mapped[int] = mapped_column(Integer, default=0)  # per-owner INV-2026-0001 numbering
+    export_seq: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = _ts()
+    last_seen_at: Mapped[datetime] = _ts()
+    deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
+class TenantMixin:
+    """owner_id on every workspace row. Filled from the owner-bound session on insert (app.tenancy)."""
+
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+
+
+class Vendor(TenantMixin, Base):
     __tablename__ = "vendors"
+    __table_args__ = (UniqueConstraint("owner_id", "code"),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    code: Mapped[str] = mapped_column(String(32), unique=True)
+    code: Mapped[str] = mapped_column(String(32))
     legal_name: Mapped[str] = mapped_column(String(255))
     aliases: Mapped[list[str]] = mapped_column(JSON, default=list)
     tax_id: Mapped[str | None] = mapped_column(String(64))
@@ -109,12 +145,13 @@ class Vendor(Base):
     created_at: Mapped[datetime] = _ts()
 
 
-class VendorRequest(Base):
+class VendorRequest(TenantMixin, Base):
     __tablename__ = "vendor_requests"
+    __table_args__ = (UniqueConstraint("owner_id", "token"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     vendor_id: Mapped[int | None] = mapped_column(ForeignKey("vendors.id"))
     proposed_name: Mapped[str | None] = mapped_column(String(255))
-    token: Mapped[str] = mapped_column(String(64), unique=True)
+    token: Mapped[str] = mapped_column(String(64))
     docs_needed: Mapped[list[str]] = mapped_column(JSON, default=list)
     docs_received: Mapped[list[str]] = mapped_column(JSON, default=list)
     status: Mapped[str] = mapped_column(String(16), default="open")  # open|submitted|approved|rejected
@@ -125,10 +162,11 @@ class VendorRequest(Base):
     message: Mapped[dict[str, Any] | None] = mapped_column(JSON)  # the comms draft shown on the portal
 
 
-class PurchaseOrder(Base):
+class PurchaseOrder(TenantMixin, Base):
     __tablename__ = "purchase_orders"
+    __table_args__ = (UniqueConstraint("owner_id", "po_number"),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    po_number: Mapped[str] = mapped_column(String(32), unique=True)
+    po_number: Mapped[str] = mapped_column(String(32))
     vendor_id: Mapped[int | None] = mapped_column(ForeignKey("vendors.id"))
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     amount: Mapped[Decimal] = mapped_column(Money)
@@ -138,7 +176,7 @@ class PurchaseOrder(Base):
     notes: Mapped[str | None] = mapped_column(Text)  # e.g. "Raised from quote Q-77" (implied-PO evidence)
 
 
-class POLine(Base):
+class POLine(TenantMixin, Base):
     __tablename__ = "po_lines"
     id: Mapped[int] = mapped_column(primary_key=True)
     po_id: Mapped[int] = mapped_column(ForeignKey("purchase_orders.id"))
@@ -150,7 +188,7 @@ class POLine(Base):
     gl_code: Mapped[str | None] = mapped_column(String(16))
 
 
-class POAmendment(Base):
+class POAmendment(TenantMixin, Base):
     """Audit trail of changes to a PO's master amount (a reviewer's set_po_amount_note on approval, or a
     master-data CSV import)."""
 
@@ -166,7 +204,7 @@ class POAmendment(Base):
     created_at: Mapped[datetime] = _ts()
 
 
-class GRN(Base):
+class GRN(TenantMixin, Base):
     __tablename__ = "grns"
     id: Mapped[int] = mapped_column(primary_key=True)
     po_id: Mapped[int] = mapped_column(ForeignKey("purchase_orders.id"))
@@ -175,17 +213,20 @@ class GRN(Base):
     received_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
 
-class GLAccount(Base):
+class GLAccount(TenantMixin, Base):
     __tablename__ = "gl_accounts"
-    code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    __table_args__ = (UniqueConstraint("owner_id", "code"),)
+    id: Mapped[int] = mapped_column(primary_key=True)  # surrogate: the code is unique per owner only
+    code: Mapped[str] = mapped_column(String(16))
     name: Mapped[str] = mapped_column(String(255))
     category: Mapped[str | None] = mapped_column(String(64))
 
 
-class Case(Base):
+class Case(TenantMixin, Base):
     __tablename__ = "cases"
+    __table_args__ = (UniqueConstraint("owner_id", "ref"),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    ref: Mapped[str | None] = mapped_column(String(32), unique=True)
+    ref: Mapped[str | None] = mapped_column(String(32))
     parent_case_id: Mapped[int | None] = mapped_column(ForeignKey("cases.id"))
     submitter_name: Mapped[str | None] = mapped_column(String(255))
     submitter_email: Mapped[str | None] = mapped_column(String(255))
@@ -209,12 +250,13 @@ class Case(Base):
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
     sla_due_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     seed: Mapped[bool] = mapped_column(Boolean, default=False)  # seeded demo history (labelled in the UI)
+    scenario_id: Mapped[str | None] = mapped_column(String(64), index=True)  # launcher runs (dependencies)
     approved_by: Mapped[str | None] = mapped_column(String(128))  # reviewer, or "auto" (set at finalize)
     approved_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     exported_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
 
-class Document(Base):
+class Document(TenantMixin, Base):
     __tablename__ = "documents"
     id: Mapped[int] = mapped_column(primary_key=True)
     case_id: Mapped[int] = mapped_column(ForeignKey("cases.id"), index=True)
@@ -230,7 +272,7 @@ class Document(Base):
     has_text_layer: Mapped[bool | None] = mapped_column(Boolean)
 
 
-class Extraction(Base):
+class Extraction(TenantMixin, Base):
     __tablename__ = "extractions"
     id: Mapped[int] = mapped_column(primary_key=True)
     case_id: Mapped[int] = mapped_column(ForeignKey("cases.id"), index=True)
@@ -239,7 +281,7 @@ class Extraction(Base):
     field_meta: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
-class POConsumption(Base):
+class POConsumption(TenantMixin, Base):
     __tablename__ = "po_consumption"
     id: Mapped[int] = mapped_column(primary_key=True)
     po_id: Mapped[int] = mapped_column(ForeignKey("purchase_orders.id"), index=True)
@@ -250,7 +292,7 @@ class POConsumption(Base):
     state: Mapped[str] = mapped_column(String(16), default="reserved")  # reserved|consumed|released
 
 
-class RuleResult(Base):
+class RuleResult(TenantMixin, Base):
     __tablename__ = "rule_results"
     id: Mapped[int] = mapped_column(primary_key=True)
     case_id: Mapped[int] = mapped_column(ForeignKey("cases.id"), index=True)
@@ -262,7 +304,7 @@ class RuleResult(Base):
     evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
-class StageEvent(Base):
+class StageEvent(TenantMixin, Base):
     """Append-only: one row per stage transition (started, then completed/failed/waiting, or skipped)."""
 
     __tablename__ = "stage_events"
@@ -284,7 +326,7 @@ class StageEvent(Base):
     ended_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
 
-class TemplateVersion(Base):
+class TemplateVersion(TenantMixin, Base):
     __tablename__ = "template_versions"
     id: Mapped[int] = mapped_column(primary_key=True)
     case_id: Mapped[int] = mapped_column(ForeignKey("cases.id"), index=True)
@@ -297,7 +339,7 @@ class TemplateVersion(Base):
     created_by: Mapped[str] = mapped_column(String(16), default="agent")  # agent|reviewer
 
 
-class ReviewActionRow(Base):
+class ReviewActionRow(TenantMixin, Base):
     __tablename__ = "review_actions"
     id: Mapped[int] = mapped_column(primary_key=True)
     case_id: Mapped[int] = mapped_column(ForeignKey("cases.id"), index=True)
@@ -308,10 +350,11 @@ class ReviewActionRow(Base):
     created_at: Mapped[datetime] = _ts()
 
 
-class ExportBatch(Base):
+class ExportBatch(TenantMixin, Base):
     __tablename__ = "export_batches"
+    __table_args__ = (UniqueConstraint("owner_id", "ref"),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    ref: Mapped[str | None] = mapped_column(String(32), unique=True)
+    ref: Mapped[str | None] = mapped_column(String(32))
     erp_profile: Mapped[str] = mapped_column(String(64))
     case_ids: Mapped[list[int]] = mapped_column(JSON, default=list)
     file_key: Mapped[str | None] = mapped_column(String(512))
@@ -319,7 +362,7 @@ class ExportBatch(Base):
     created_at: Mapped[datetime] = _ts()
 
 
-class Notification(Base):
+class Notification(TenantMixin, Base):
     __tablename__ = "notifications"
     id: Mapped[int] = mapped_column(primary_key=True)
     audience: Mapped[str] = mapped_column(String(16))  # submitter|reviewer
@@ -329,7 +372,7 @@ class Notification(Base):
     created_at: Mapped[datetime] = _ts()
 
 
-class VendorMemory(Base):
+class VendorMemory(TenantMixin, Base):
     __tablename__ = "vendor_memory"
     id: Mapped[int] = mapped_column(primary_key=True)
     vendor_id: Mapped[int] = mapped_column(ForeignKey("vendors.id"), index=True)
@@ -338,7 +381,7 @@ class VendorMemory(Base):
     created_at: Mapped[datetime] = _ts()
 
 
-class ConfigVersion(Base):
+class ConfigVersion(TenantMixin, Base):
     __tablename__ = "config_versions"
     id: Mapped[int] = mapped_column(primary_key=True)
     path: Mapped[str] = mapped_column(String(255), index=True)
@@ -349,8 +392,25 @@ class ConfigVersion(Base):
     created_at: Mapped[datetime] = _ts()
 
 
+class StreamToken(Base):
+    """Single-use, short-lived SSE token (EventSource cannot send an Authorization header). Only the sha256
+    of the token is stored."""
+
+    __tablename__ = "stream_tokens"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"))
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    used_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+
 class LLMCache(Base):
     __tablename__ = "llm_cache"
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     response: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = _ts()
+
+
+# The tenancy session guards must be active wherever these models are used: importing them here registers
+# them (app.tenancy needs TenantMixin and User, defined above).
+from app import tenancy as _tenancy  # noqa: F401

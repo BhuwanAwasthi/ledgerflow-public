@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Case, Document, ReviewActionRow, RuleResult, StageEvent, TemplateVersion, Vendor
 from app.rules.engine import fmt_money
+from app.tenancy import scoped
 
 _STYLES = getSampleStyleSheet()
 _GRID = TableStyle(
@@ -42,15 +43,21 @@ def _table(header: list[str], rows: list[list[object]], widths: list[float]) -> 
 
 
 def build_audit_pack(s: Session, case: Case, app_name: str) -> bytes:
-    vendor = s.get(Vendor, case.vendor_id) if case.vendor_id else None
-    last_run = s.scalar(select(func.max(RuleResult.run_no)).where(RuleResult.case_id == case.id))
+    own = case.owner_id
+    vendor = s.scalars(scoped(select(Vendor).where(Vendor.id == case.vendor_id), own)).first() if case.vendor_id else None
+    last_run = s.scalar(scoped(select(func.max(RuleResult.run_no)).where(RuleResult.case_id == case.id), own))
     rules = s.scalars(
-        select(RuleResult).where(RuleResult.case_id == case.id, RuleResult.run_no == last_run).order_by(RuleResult.id)
+        scoped(select(RuleResult).where(RuleResult.case_id == case.id, RuleResult.run_no == last_run), own)
+        .order_by(RuleResult.id)
     ).all() if last_run else []
-    events = s.scalars(select(StageEvent).where(StageEvent.case_id == case.id).order_by(StageEvent.seq)).all()
-    actions = s.scalars(select(ReviewActionRow).where(ReviewActionRow.case_id == case.id).order_by(ReviewActionRow.id)).all()
-    templates = s.scalars(select(TemplateVersion).where(TemplateVersion.case_id == case.id).order_by(TemplateVersion.version)).all()
-    docs = s.scalars(select(Document).where(Document.case_id == case.id).order_by(Document.id)).all()
+    events = s.scalars(scoped(select(StageEvent).where(StageEvent.case_id == case.id), own).order_by(StageEvent.seq)).all()
+    actions = s.scalars(
+        scoped(select(ReviewActionRow).where(ReviewActionRow.case_id == case.id), own).order_by(ReviewActionRow.id)
+    ).all()
+    templates = s.scalars(
+        scoped(select(TemplateVersion).where(TemplateVersion.case_id == case.id), own).order_by(TemplateVersion.version)
+    ).all()
+    docs = s.scalars(scoped(select(Document).where(Document.case_id == case.id), own).order_by(Document.id)).all()
 
     story: list[Flowable] = [
         Paragraph(escape(f"{app_name} audit pack: {case.ref}"), _STYLES["Title"]),

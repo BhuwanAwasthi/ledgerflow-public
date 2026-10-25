@@ -1,4 +1,5 @@
-"""Vendor portal and vendor admin (no login; the token in the link is the credential).
+"""Vendor portal and vendor admin (the token in the link names the request; in this demo the portal also
+needs sign-in, and every lookup is scoped to the signed-in user's workspace).
 
 Flow: upload on /portal/{token} -> `vendor_docs_received`: store + render each file, classify it with the
 classifier agent, run code verification checks (name on the document, tax-ID format, bank account digits)
@@ -29,6 +30,7 @@ from app.config_loader import ResolvedConfig
 from app.documents import page_texts
 from app.models import Case, CaseStatus, Document, Notification, ReviewActionRow, Vendor, VendorRequest
 from app.orchestrator import Orchestrator
+from app.tenancy import bind_owner, require_owner, scoped
 
 
 def admin_checked(cfg: ResolvedConfig) -> set[str]:
@@ -43,15 +45,16 @@ class PortalError(Exception):
 
 
 def get_request(s: Session, token: str) -> VendorRequest:
-    req = s.scalars(select(VendorRequest).where(VendorRequest.token == token)).first()
+    req = s.scalars(scoped(select(VendorRequest).where(VendorRequest.token == token), require_owner(s))).first()
     if req is None:
         raise PortalError(404, "This upload link is not valid.")
     return req
 
 
 def request_view(s: Session, req: VendorRequest, cfg: ResolvedConfig | None = None) -> dict[str, Any]:
-    vendor = s.get(Vendor, req.vendor_id) if req.vendor_id else None
-    case = s.get(Case, req.case_id) if req.case_id else None
+    own = req.owner_id
+    vendor = s.scalars(scoped(select(Vendor).where(Vendor.id == req.vendor_id), own)).first() if req.vendor_id else None
+    case = s.scalars(scoped(select(Case).where(Case.id == req.case_id), own)).first() if req.case_id else None
     labels = {lbl.id: lbl.description for lbl in cfg.document_types.labels} if cfg else {}
     need_text = (cfg.agents["comms"].params.get("need_text") or {}) if cfg else {}
     return {
@@ -132,11 +135,12 @@ async def vendor_docs_received(
         raise PortalError(409, f"This request is {req.status}; no more uploads are needed.")
     if not files:
         raise PortalError(422, "Choose at least one file.")
-    case = s.get(Case, req.case_id) if req.case_id else None
+    own = req.owner_id
+    case = s.scalars(scoped(select(Case).where(Case.id == req.case_id), own)).first() if req.case_id else None
     if case is None:
         raise PortalError(409, "This request is not linked to an invoice.")
     cfg = orch.case_config(s, case)
-    vendor = s.get(Vendor, req.vendor_id) if req.vendor_id else None
+    vendor = s.scalars(scoped(select(Vendor).where(Vendor.id == req.vendor_id), own)).first() if req.vendor_id else None
     state = effective(fold_state(s, case.id))
     invoice_last4 = ((state.get("normaliser") or {}).get("invoice") or {}).get("remit_bank", {}) or {}
     expected_last4 = invoice_last4.get("account_last4") or (vendor.bank_last4 if vendor else None)
@@ -144,7 +148,7 @@ async def vendor_docs_received(
     agent_cfg = cfg.agents["classifier"]
     classifier = ClassifierAgent(agent_cfg)
     ctx = AgentContext(case_id=case.id, case_ref=case.ref, stage_id="portal", run_no=0, config=cfg,
-                       agent_config=agent_cfg, state={}, session_factory=orch.session_factory,
+                       agent_config=agent_cfg, state={}, session_factory=bind_owner(orch.session_factory, own),
                        llm=orch.llm, storage=storage)
     params = cfg.agents["vendor"].params
     max_bytes = int(cfg.app.limits.max_upload_mb * 1024 * 1024)
@@ -204,7 +208,7 @@ async def vendor_docs_received(
 
 def waiting_event(s: Session, orch: Orchestrator, case_id: int) -> str | None:
     """The event an on-hold case's paused stage waits for (workflow.yaml `wait_for`)."""
-    case = s.get(Case, case_id)
+    case = s.scalars(scoped(select(Case).where(Case.id == case_id), require_owner(s))).first()
     if case is None or case.status != CaseStatus.on_hold or not case.current_stage:
         return None
     return orch.case_config(s, case).workflow.stage(case.current_stage).wait_for
@@ -223,12 +227,14 @@ async def resume_case(s: Session, orch: Orchestrator, case_id: int) -> bool:
 async def approve_vendor(s: Session, orch: Orchestrator, vendor_id: int, actor: str) -> dict[str, Any]:
     """Admin approval: the vendor becomes approved, verified bank details from a bank-change request are
     written to the master, and the cases those requests (or the vendor's onboarding) paused resume."""
-    vendor = s.get(Vendor, vendor_id)
+    own = require_owner(s)
+    vendor = s.scalars(scoped(select(Vendor).where(Vendor.id == vendor_id), own)).first()
     if vendor is None:
         raise PortalError(404, f"vendor {vendor_id} not found")
-    reqs = s.scalars(
-        select(VendorRequest).where(VendorRequest.vendor_id == vendor_id, VendorRequest.status.in_(["open", "submitted"]))
-    ).all()
+    reqs = s.scalars(scoped(
+        select(VendorRequest).where(VendorRequest.vendor_id == vendor_id, VendorRequest.status.in_(["open", "submitted"])),
+        own,
+    )).all()
     vendor.status = "approved"
     notes: list[str] = []
     case_ids: list[tuple[int, str]] = []
@@ -259,7 +265,9 @@ async def approve_vendor(s: Session, orch: Orchestrator, vendor_id: int, actor: 
     # Resume the cases these requests belong to, plus other invoices of this vendor paused on the same
     # onboarding event (they share the vendor's one onboarding request). Cases held for other reasons stay.
     events = {e for cid, kind in case_ids if kind == "onboarding" if (e := waiting_event(s, orch, cid))}
-    on_hold = s.scalars(select(Case.id).where(Case.vendor_id == vendor_id, Case.status == CaseStatus.on_hold)).all()
+    on_hold = s.scalars(
+        scoped(select(Case.id).where(Case.vendor_id == vendor_id, Case.status == CaseStatus.on_hold), own)
+    ).all()
     others = [c for c in on_hold if events and waiting_event(s, orch, c) in events]
     targets = dict.fromkeys([*(cid for cid, _ in case_ids), *others])
     resumed = [cid for cid in targets if await resume_case(s, orch, cid)]
@@ -267,13 +275,15 @@ async def approve_vendor(s: Session, orch: Orchestrator, vendor_id: int, actor: 
 
 
 def reject_vendor(s: Session, vendor_id: int, actor: str, reason: str | None) -> dict[str, Any]:
-    vendor = s.get(Vendor, vendor_id)
+    own = require_owner(s)
+    vendor = s.scalars(scoped(select(Vendor).where(Vendor.id == vendor_id), own)).first()
     if vendor is None:
         raise PortalError(404, f"vendor {vendor_id} not found")
     vendor.status = "rejected"
-    for req in s.scalars(
-        select(VendorRequest).where(VendorRequest.vendor_id == vendor_id, VendorRequest.status.in_(["open", "submitted"]))
-    ).all():
+    for req in s.scalars(scoped(
+        select(VendorRequest).where(VendorRequest.vendor_id == vendor_id, VendorRequest.status.in_(["open", "submitted"])),
+        own,
+    )).all():
         req.status = "rejected"
         s.add(Notification(audience="reviewer", case_id=req.case_id,
                            text=f"{vendor.legal_name} rejected by {actor}" + (f": {reason}" if reason else ".")))

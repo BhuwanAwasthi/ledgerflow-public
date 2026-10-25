@@ -20,6 +20,7 @@ from app.agents.vendor import iban_hash
 from app.case_state import effective
 from app.models import Case, PurchaseOrder, RuleResult, Vendor
 from app.rules.engine import LineView, OtherCase, POView, RuleContext, VendorView, dec, evaluate
+from app.tenancy import scoped
 
 # statuses whose invoices still count for duplicate detection
 _DEAD = ("failed", "unsupported", "split", "rejected")
@@ -68,12 +69,13 @@ def build_rule_context(s: Session, case: Case, state: dict[str, Any]) -> RuleCon
 
     others: list[OtherCase] = []
     if v is not None:
-        rows = s.scalars(
+        rows = s.scalars(scoped(
             select(Case).where(
                 # only earlier cases: two copies processed concurrently must not reject each other
                 Case.vendor_id == v.id, Case.id < case.id, Case.seed.is_(False), Case.status.not_in(_DEAD)
-            )
-        ).all()
+            ),
+            case.owner_id,
+        )).all()
         others = [
             OtherCase(c.id, c.ref or f"case {c.id}", c.invoice_number_norm, c.total, c.invoice_date, c.created_at)
             for c in rows

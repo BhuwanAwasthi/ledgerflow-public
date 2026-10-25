@@ -11,7 +11,7 @@ import yaml
 from app import storage as storage_mod
 from app.db import normalise_url
 from app.settings import REPO_ROOT, Settings
-from app.storage import SupabaseStorage, make_storage
+from app.storage import ReadOnlyKeyError, SupabaseStorage, make_storage
 
 
 class FakeSupabase:
@@ -70,8 +70,16 @@ def test_supabase_storage_roundtrip_and_health(fake_supabase: FakeSupabase) -> N
 
 def test_supabase_storage_missing_object_raises(fake_supabase: FakeSupabase) -> None:
     st = SupabaseStorage("https://proj.supabase.co", "k", "documents")
-    with pytest.raises(httpx.HTTPStatusError):
+    with pytest.raises(FileNotFoundError):  # the same contract as LocalStorage (app.baseline relies on it)
         st.get("cases/9/missing.pdf")
+
+
+def test_supabase_storage_baseline_is_read_only(fake_supabase: FakeSupabase) -> None:
+    st = SupabaseStorage("https://proj.supabase.co", "k", "documents")
+    with pytest.raises(ReadOnlyKeyError):
+        st.put("baseline/fixtures/x.pdf", b"%PDF")
+    assert st.put_baseline("baseline/fixtures/x.pdf", b"%PDF") == "baseline/fixtures/x.pdf"
+    assert st.get("baseline/fixtures/x.pdf") == b"%PDF"
 
 
 def test_supabase_health_false_when_unreachable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -98,13 +106,17 @@ def test_render_blueprint() -> None:
     assert svc["type"] == "web" and svc["plan"] == "free" and svc["runtime"] == "python"
     assert "rootDir" not in svc, "the API reads ../config and ../data, so the whole repo must be deployed"
     assert "uv" in svc["buildCommand"] and "sync" in svc["buildCommand"]
-    assert "uvicorn app.main:app --host 0.0.0.0 --port $PORT" in svc["startCommand"]
+    start = svc["startCommand"]
+    assert "uvicorn app.main:app --host 0.0.0.0 --port $PORT" in start
+    assert 0 <= start.find("alembic upgrade head") < start.find("uvicorn"), "migrations run before the API starts"
     assert svc["healthCheckPath"] == "/healthz"
     keys = {e["key"]: e for e in svc["envVars"]}
     for secret in ("AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_DEPLOYMENT", "DATABASE_URL",
                    "SUPABASE_URL", "SUPABASE_SERVICE_KEY", "CORS_ORIGINS", "PUBLIC_APP_URL"):
         assert keys[secret].get("sync") is False, f"{secret} must be set in the dashboard, not committed"
     assert keys["STORAGE_BACKEND"]["value"] == "supabase"
+    assert keys["AUTH_MODE"]["value"] == "supabase"  # never the dev stub on Render (it refuses to start there)
+    assert keys["FILE_TOKEN_SECRET"].get("generateValue") is True
     py = keys["PYTHON_VERSION"]["value"]
     assert py.startswith("3.12."), "pyproject pins python >=3.12,<3.13"
 

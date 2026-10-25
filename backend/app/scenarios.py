@@ -147,6 +147,9 @@ class ScenarioSpec(_M):
     copy_of: str | None = None
     override: dict[str, Any] = Field(default_factory=dict)
     demo_remark: str | None = None
+    # scenarios this one builds on (S02b needs S02a's consumption of PO-1001): the launcher runs them first
+    # when the workspace has no run of them yet
+    requires: list[str] = Field(default_factory=list)
     new_vendor: NewVendorSpec | None = None
     supporting_files: list[SupportingFileSpec] = Field(default_factory=list)
 
@@ -185,6 +188,22 @@ class Scenarios(_M):
             if sc.id == sid:
                 return sc
         raise KeyError(sid)
+
+    def prerequisites(self, sc: ScenarioSpec) -> list[ScenarioSpec]:
+        """Every scenario `sc` builds on, transitively, in the order they must run (dependencies first)."""
+        out: list[ScenarioSpec] = []
+
+        def visit(s: ScenarioSpec, path: tuple[str, ...]) -> None:
+            for dep_id in s.requires:
+                if dep_id in path:
+                    raise ValueError(f"scenario dependency cycle: {' -> '.join((*path, dep_id))}")
+                dep = self.scenario(dep_id)
+                visit(dep, (*path, dep_id))
+                if dep not in out:
+                    out.append(dep)
+
+        visit(sc, (sc.id,))
+        return out
 
     def invoices(self, sc: ScenarioSpec) -> list[InvoiceSpec]:
         """The invoice(s) printed in a scenario's file, in page order (copy_of resolved)."""

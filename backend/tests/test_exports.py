@@ -10,15 +10,12 @@ from datetime import date
 
 import pytest
 import yaml
-from fastapi.testclient import TestClient
 
 from app.agents import policy
 from app.config_loader import ErpProfile, build_config, read_config_files
-from app.db import init_db, make_engine, make_session_factory
 from app.exports.render import diff_rows, money, render_rows, to_bytes
 from app.main import create_app
-from app.seed import load_master
-from tests.conftest import CONFIG_DIR, MASTER_DIR
+from tests.conftest import CONFIG_DIR, auth_client
 from tests.test_api import wait_status
 
 
@@ -86,14 +83,7 @@ def test_sandbox_blocks_unsafe_template():
 def test_batch_export_reexport_guard_and_downloads(test_settings, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(policy, "today", lambda: date(2026, 10, 11))
     settings = test_settings.model_copy(update={"force_stub_agents": False, "llm_backend": "fake"})
-    engine = make_engine(settings.database_url)
-    init_db(engine)
-    with make_session_factory(engine)() as s:
-        load_master(s, MASTER_DIR)
-        s.commit()
-    engine.dispose()
-
-    with TestClient(create_app(settings)) as client:
+    with auth_client(create_app(settings)) as client:  # first sign-in seeds the demo master data
         ids = []
         for sid in ("S01_happy", "S02a_split_part1"):
             case = client.post(f"/api/fixtures/{sid}/run").json()
@@ -155,7 +145,7 @@ def test_batch_export_reexport_guard_and_downloads(test_settings, monkeypatch: p
 
 
 def test_portal_unknown_token_is_404(test_settings):
-    with TestClient(create_app(test_settings)) as client:
+    with auth_client(create_app(test_settings)) as client:
         assert client.get("/portal/nope").status_code == 404
         assert client.post("/portal/nope/upload", files=[("files", ("a.pdf", b"%PDF-1.4", "application/pdf"))]).status_code == 404
 

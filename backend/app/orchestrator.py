@@ -13,6 +13,10 @@ event loop in a background thread ("orchestrator"). Pipeline work is mostly sync
 calls, so a slow query or commit there never stalls the API loop that serves SSE. Public coroutines
 (submit_review, fire_event, rerun, resume_pending, join, call) hop onto that loop; enqueue and the event bus
 are thread-safe.
+
+Tenancy: every job works through sessions and storage bound to the case's owner (app.tenancy.bind_owner,
+OwnerStorage), so an agent can only read and write that user's workspace. Callers check ownership before
+they hand a case id to the orchestrator (the API loads the case through the user's scoped session first).
 """
 
 from __future__ import annotations
@@ -45,7 +49,8 @@ from app.models import (
     StageStatus,
     utcnow,
 )
-from app.storage import Storage
+from app.storage import OwnerStorage, Storage
+from app.tenancy import bind_owner, scoped
 
 log = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -183,6 +188,20 @@ class Orchestrator:
         self._locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._configs: dict[str, ResolvedConfig] = {}
         self._registries: dict[str, dict[str, Agent]] = {}
+        self._after: dict[int, list[int]] = {}  # case id -> cases queued once its current job ends
+        self._after_lock = threading.Lock()
+
+    # ---------------- tenancy
+    def sessions_for(self, case_id: int) -> sessionmaker[Session]:
+        """Session factory bound to the case's owner."""
+        with self.session_factory() as s:
+            owner = s.scalar(select(Case.owner_id).where(Case.id == case_id))
+        if owner is None:
+            raise OrchestratorError(f"case {case_id} not found")
+        return bind_owner(self.session_factory, owner)
+
+    def storage_for(self, owner_id: str) -> Storage | None:
+        return OwnerStorage(self.storage, owner_id) if self.storage is not None else None
 
     # ---------------- lifecycle
     async def start(self) -> None:
@@ -255,6 +274,18 @@ class Orchestrator:
         """Wait until every queued job (and the jobs they enqueue) has finished."""
         await self.call(self._queue.join())
 
+    def enqueue_after(self, case_id: int, after_case_id: int) -> None:
+        """Queue `case_id` once the job of `after_case_id` ends (a scenario's prerequisite run). Register it
+        before `after_case_id` is enqueued, so the hand-over cannot be missed."""
+        with self._after_lock:
+            self._after.setdefault(after_case_id, []).append(case_id)
+
+    def _release_after(self, case_id: int) -> None:
+        with self._after_lock:
+            waiting = self._after.pop(case_id, [])
+        for cid in waiting:
+            self.enqueue(cid)
+
     def enqueue(self, case_id: int, target: str | None = None, run_no: int | None = None) -> None:
         """Thread-safe: called from API handlers (any thread) and from the workers themselves."""
         job = Job(case_id, target, run_no)
@@ -269,7 +300,7 @@ class Orchestrator:
 
     async def _resume_pending(self) -> int:
         """Startup: restart runs that were processing (from the stage they were in, or the target an
-        accepted review/event already moved them to) or never started."""
+        accepted review/event already moved them to) or never started. System-wide: every owner's cases."""
         with self.session_factory() as s:
             rows = s.scalars(
                 select(Case).where(Case.status.in_([CaseStatus.processing, CaseStatus.received]))
@@ -292,12 +323,13 @@ class Orchestrator:
             raise OrchestratorError(f"unknown review action '{action}'")
         if ops and action != ReviewAction.remark:
             raise OrchestratorError("typed edits (`ops`) can only be sent with a remark")
-        with self.session_factory() as s:  # fail fast instead of waiting for a running LLM stage
+        sf = self.sessions_for(case_id)
+        with sf() as s:  # fail fast instead of waiting for a running LLM stage
             status = self._get_case(s, case_id).status
         if status != CaseStatus.needs_review:
             raise OrchestratorError(f"case {case_id} is not waiting for review (status {status})")
         async with self._locks[case_id]:
-            with self.session_factory() as s:
+            with sf() as s:
                 case = self._get_case(s, case_id)
                 cfg = self.case_config(s, case)
                 stage = self._stage_or_none(cfg, case.current_stage)
@@ -314,8 +346,12 @@ class Orchestrator:
         return await self.call(self._fire_event(case_id, event))
 
     async def _fire_event(self, case_id: int, event: str) -> bool:
+        try:
+            sf = self.sessions_for(case_id)
+        except OrchestratorError:
+            return False
         async with self._locks[case_id]:
-            with self.session_factory() as s:
+            with sf() as s:
                 case = s.get(Case, case_id)
                 if case is None:
                     return False
@@ -333,8 +369,9 @@ class Orchestrator:
         return await self.call(self._rerun(case_id, from_stage))
 
     async def _rerun(self, case_id: int, from_stage: str | None) -> str:
+        sf = self.sessions_for(case_id)
         async with self._locks[case_id]:
-            with self.session_factory() as s:
+            with sf() as s:
                 case = self._get_case(s, case_id)
                 if case.status not in RERUNNABLE:
                     raise OrchestratorError(
@@ -399,10 +436,12 @@ class Orchestrator:
                 log.exception("worker %s: job for case %s crashed", n, job.case_id)
                 self._mark_failed(job.case_id, f"{type(e).__name__}: {e}")
             finally:
+                self._release_after(job.case_id)
                 self._queue.task_done()
 
     async def _run(self, job: Job) -> None:
-        with self.session_factory() as s:
+        sf = self.sessions_for(job.case_id)
+        with sf() as s:
             case = self._get_case(s, job.case_id)
             cfg = self.case_config(s, case)
             wf = cfg.workflow
@@ -453,7 +492,7 @@ class Orchestrator:
                 case.current_stage = stage.id
                 s.commit()
                 self._event(s, case, run_no, stage, StageStatus.started)
-                result, error, attempts = await self._run_agent(s, cfg, registry, case, stage, run_no)
+                result, error, attempts = await self._run_agent(sf, s, cfg, registry, case, stage, run_no)
                 if result is None:
                     self._event(
                         s,
@@ -566,6 +605,7 @@ class Orchestrator:
 
     async def _run_agent(
         self,
+        sf: sessionmaker[Session],
         s: Session,
         cfg: ResolvedConfig,
         registry: dict[str, Agent],
@@ -595,9 +635,9 @@ class Orchestrator:
                 config=cfg,
                 agent_config=agent_cfg,
                 state=fold_state(s, case.id),
-                session_factory=self.session_factory,
+                session_factory=sf,
                 llm=self.llm,
-                storage=self.storage,
+                storage=self.storage_for(case.owner_id),
                 emit=emit,
             )
             t0 = time.perf_counter()
@@ -685,13 +725,18 @@ class Orchestrator:
 
     def _mark_failed(self, case_id: int, error: str) -> None:
         """Orchestrator-level crash: still append a failed stage_event so the UI can show the error."""
-        with self.session_factory() as s:
+        try:
+            sf = self.sessions_for(case_id)
+        except OrchestratorError:
+            return
+        with sf() as s:
             case = s.get(Case, case_id)
             if case is None:
                 return
             stage_id = case.current_stage or "orchestrator"
             last = s.scalars(
-                select(StageEvent).where(StageEvent.case_id == case_id).order_by(StageEvent.seq.desc())
+                scoped(select(StageEvent).where(StageEvent.case_id == case_id), case.owner_id)
+                .order_by(StageEvent.seq.desc())
             ).first()
             now = utcnow()
             ev = StageEvent(

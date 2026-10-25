@@ -1,10 +1,14 @@
-"""`make seed`: reset the DB, load data/master/*.csv, and optionally add seeded demo history.
+"""Workspace seed data, and `make seed` (reset the DB to an empty, migrated schema).
 
-    uv run python -m app.seed [--no-history] [--no-reset]
+    uv run python -m app.seed [--no-reset]
 
-Seeded history (data/scenarios.yaml `seed_history`) gives the dashboard something to show on first open:
-already-decided cases flagged `seed=true`, each with a short stage_event trail and its failed rule rows.
-They never touch PO balances, so the live demo scenarios start from the exact numbers in scenarios.yaml.
+Every user's workspace is seeded on first sign-in (app.baseline.Baseline.ensure_workspace) with the rows
+below, written through an owner-bound session so each row gets that user's owner_id:
+- master data from data/master/*.csv (vendors, POs, PO lines, GRNs, GL accounts)
+- seeded history (data/scenarios.yaml `seed_history`), so the dashboard has something to show on first
+  open: already-decided cases flagged `seed=true`, each with a short stage_event trail and its failed rule
+  rows. They never touch PO balances, so the live demo scenarios start from the exact numbers in
+  scenarios.yaml.
 """
 
 from __future__ import annotations
@@ -17,11 +21,12 @@ from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
 
-from sqlalchemy import Engine, func, select
+from sqlalchemy import Engine, select, text
 from sqlalchemy.orm import Session
 
-from app.config_loader import ResolvedConfig, resolved_config
-from app.db import Base, init_db, make_engine, make_session_factory
+from app.cases import case_ref
+from app.config_loader import ResolvedConfig
+from app.db import Base, init_db, make_engine
 from app.models import (
     GRN,
     Case,
@@ -34,8 +39,9 @@ from app.models import (
     StageStatus,
     Vendor,
 )
-from app.scenarios import Scenarios, load_scenarios, money
+from app.scenarios import Scenarios, money
 from app.settings import Settings, get_settings
+from app.tenancy import require_owner, scoped
 
 SEED_RNG = 20261011
 # Decision outcome -> rule severity that produces it (mirrors rules.yaml decision_precedence).
@@ -72,7 +78,7 @@ def _day(s: str) -> datetime | None:
 
 
 def load_master(s: Session, master_dir: Path) -> SeedReport:
-    """Insert master data from the generated CSVs (expects empty tables)."""
+    """Insert master data from the generated CSVs into the session owner's (empty) workspace."""
     rep = SeedReport()
     for r in _rows(master_dir / "gl_accounts.csv"):
         s.add(GLAccount(code=r["code"], name=r["name"], category=r["category"] or None))
@@ -135,7 +141,9 @@ def seed_history(s: Session, cfg: ResolvedConfig, sc: Scenarios, *, now: datetim
         return 0
     rng = random.Random(SEED_RNG)
     now = now or datetime.now(UTC)
-    vendors = s.scalars(select(Vendor).where(Vendor.status == "approved").order_by(Vendor.id)).all()
+    vendors = s.scalars(
+        scoped(select(Vendor).where(Vendor.status == "approved").order_by(Vendor.id), require_owner(s))
+    ).all()
     if not vendors:
         raise SeedError("seed history needs approved vendors: load master data first")
     rules_by_sev: dict[str, list] = {}
@@ -161,7 +169,7 @@ def seed_history(s: Session, cfg: ResolvedConfig, sc: Scenarios, *, now: datetim
         )
         s.add(case)
         s.flush()
-        case.ref = f"{cfg.app.app.case_ref_prefix}{case.id:04d}"
+        case.ref = case_ref(s, cfg, case)
 
         failed = []
         if decision in DECISION_SEVERITY:
@@ -202,44 +210,35 @@ def seed_history(s: Session, cfg: ResolvedConfig, sc: Scenarios, *, now: datetim
 
 
 def reset_db(engine: Engine) -> None:
+    """Drop every table (and Alembic's version table), then migrate to head."""
     from app import models  # noqa: F401  (register tables)
 
     Base.metadata.drop_all(engine)
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
     init_db(engine)
 
 
-def run_seed(settings: Settings, *, history: bool = True, reset: bool = True) -> SeedReport:
+def run_seed(settings: Settings, *, reset: bool = True) -> None:
+    """Reset (or just migrate) the database. Workspaces are seeded per user on first sign-in."""
     engine = make_engine(settings.database_url)
     try:
         if reset:
             reset_db(engine)
         else:
             init_db(engine)
-        sf = make_session_factory(engine)
-        with sf() as s:
-            if not reset and s.scalar(select(func.count()).select_from(Vendor)):
-                raise SeedError("master data already loaded; drop --no-reset to start over")
-            rep = load_master(s, settings.data_dir / "master")
-            if history:
-                cfg = resolved_config(settings.config_dir, s)
-                rep.history_cases = seed_history(s, cfg, load_scenarios(settings.data_dir / "scenarios.yaml"))
-            s.commit()
-        return rep
     finally:
         engine.dispose()
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Reset the DB and load master data (+ seeded history).")
-    ap.add_argument("--no-history", action="store_true", help="skip the seeded demo history")
-    ap.add_argument("--no-reset", action="store_true", help="keep existing tables (fails if master data exists)")
+    ap = argparse.ArgumentParser(description="Reset the DB to an empty, migrated schema.")
+    ap.add_argument("--no-reset", action="store_true", help="only run pending migrations; keep the data")
     args = ap.parse_args()
     settings = get_settings()
-    try:
-        rep = run_seed(settings, history=not args.no_history, reset=not args.no_reset)
-    except SeedError as e:
-        raise SystemExit(f"seed failed: {e}") from e
-    print(f"Seeded {settings.database_url.split('://', 1)[0]} database: {rep}")
+    run_seed(settings, reset=not args.no_reset)
+    what = "migrated" if args.no_reset else "reset and migrated"
+    print(f"{settings.database_url.split('://', 1)[0]} database {what}. Workspaces are seeded on first sign-in.")
 
 
 if __name__ == "__main__":

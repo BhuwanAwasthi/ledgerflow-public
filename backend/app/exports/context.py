@@ -5,11 +5,13 @@ from __future__ import annotations
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.case_state import effective, gl_for_line
 from app.models import Case, PurchaseOrder, Vendor
 from app.rules.engine import dec
+from app.tenancy import scoped
 
 
 def _line_tax(line: dict[str, Any], inv: dict[str, Any], subtotal: Decimal | None) -> Decimal | None:
@@ -30,8 +32,9 @@ def template_context(s: Session, case: Case, state: dict[str, Any], version: int
     st = effective(state)
     inv: dict[str, Any] = (st.get("normaliser") or {}).get("invoice") or {}
     pm: dict[str, Any] = st.get("po_matching") or {}
-    vendor = s.get(Vendor, case.vendor_id) if case.vendor_id else None
-    po = s.get(PurchaseOrder, pm["po_id"]) if pm.get("po_id") else None
+    own = case.owner_id
+    vendor = s.scalars(scoped(select(Vendor).where(Vendor.id == case.vendor_id), own)).first() if case.vendor_id else None
+    po = s.scalars(scoped(select(PurchaseOrder).where(PurchaseOrder.id == pm["po_id"]), own)).first() if pm.get("po_id") else None
     subtotal = dec(inv.get("subtotal"))
     lines: list[dict[str, Any]] = []
     for i, ln in enumerate(inv.get("lines") or []):

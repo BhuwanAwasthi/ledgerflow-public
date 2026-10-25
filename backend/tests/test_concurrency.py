@@ -22,6 +22,7 @@ from sqlalchemy.engine import Engine
 from app.agents.base import StubScript
 from app.main import create_app
 from app.settings import Settings
+from tests.conftest import auth_headers
 
 SLOW_S = 0.8  # every stage_event insert (only the pipeline writes them) takes this long
 
@@ -43,6 +44,8 @@ def server(test_settings: Settings) -> Iterator[str]:
         assert time.monotonic() < deadline and thread.is_alive(), "uvicorn did not start"
         time.sleep(0.02)
     port = srv.servers[0].sockets[0].getsockname()[1]
+    # sign in first: seeding the workspace writes stage_events too, and must not be slowed down
+    assert httpx.get(f"http://127.0.0.1:{port}/api/me", headers=auth_headers(), timeout=30).status_code == 200
     event.listen(Engine, "before_cursor_execute", _slow_pipeline_writes)
     try:
         yield f"http://127.0.0.1:{port}"
@@ -54,7 +57,7 @@ def server(test_settings: Settings) -> Iterator[str]:
 
 def test_sse_keeps_streaming_during_a_slow_db_call(server: str):
     t0 = time.perf_counter()
-    with httpx.Client(base_url=server, timeout=30) as client:
+    with httpx.Client(base_url=server, timeout=30, headers=auth_headers()) as client:
         r = client.post("/api/cases", files={"files": ("inv.pdf", b"%PDF-1.4 test", "application/pdf")})
         assert r.status_code == 201, r.text
         case_id = r.json()["id"]
@@ -73,8 +76,11 @@ def test_sse_keeps_streaming_during_a_slow_db_call(server: str):
         poller = threading.Thread(target=poll_health, daemon=True)
         poller.start()
         arrivals: list[tuple[float, str, dict[str, Any]]] = []
+        # the browser's way in: EventSource sends no header, so it opens the stream with a single-use token
+        stream_url = client.post(f"/api/cases/{case_id}/stream-token").json()["url"]
         try:
-            with client.stream("GET", f"/api/cases/{case_id}/events/stream") as resp:
+            with httpx.Client(base_url=server, timeout=30) as anon, anon.stream("GET", stream_url) as resp:
+                assert resp.status_code == 200
                 kind = ""
                 for line in resp.iter_lines():
                     if line.startswith("event:"):

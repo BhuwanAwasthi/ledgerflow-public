@@ -37,6 +37,7 @@ from app.db import dumps
 from app.llm import LLM, AzureLLM
 from app.models import Case, ConfigVersion, StageEvent, StageStatus
 from app.storage import Storage
+from app.tenancy import bind_owner, require_owner, scoped
 
 log = logging.getLogger(__name__)
 
@@ -73,7 +74,8 @@ def require_path(session: Session, config_dir: Path, path: str) -> tuple[dict[st
 def _versions(session: Session, path: str) -> list[ConfigVersion]:
     return list(
         session.scalars(
-            select(ConfigVersion).where(ConfigVersion.path == path).order_by(ConfigVersion.version.desc())
+            scoped(select(ConfigVersion).where(ConfigVersion.path == path), require_owner(session))
+            .order_by(ConfigVersion.version.desc())
         ).all()
     )
 
@@ -81,7 +83,8 @@ def _versions(session: Session, path: str) -> list[ConfigVersion]:
 def list_files(session: Session, config_dir: Path) -> list[dict[str, Any]]:
     files, overrides = _known_paths(session, config_dir)
     counts: dict[str, int] = {}
-    for p, n in session.execute(select(ConfigVersion.path, func.count()).group_by(ConfigVersion.path)).all():
+    q = scoped(select(ConfigVersion.path, func.count()), require_owner(session)).group_by(ConfigVersion.path)
+    for p, n in session.execute(q).all():
         counts[p] = int(n)
     out = []
     for path in sorted(set(files) | set(overrides)):
@@ -167,12 +170,13 @@ def validate_edit(session: Session, config_dir: Path, edits: dict[str, str]) -> 
 
 def agent_stats(session: Session) -> dict[str, dict[str, Any]]:
     """Per agent: runs, failures, average latency and cost over completed/waiting/failed stage events."""
-    rows = session.execute(
+    rows = session.execute(scoped(
         select(StageEvent.agent_id, StageEvent.status, StageEvent.metrics).where(
             StageEvent.agent_id.is_not(None),
             StageEvent.status.in_([StageStatus.completed, StageStatus.waiting, StageStatus.failed]),
-        )
-    ).all()
+        ),
+        require_owner(session),
+    )).all()
     acc: dict[str, dict[str, Any]] = {}
     for agent_id, status, metrics in rows:
         if agent_id is None:
@@ -214,6 +218,9 @@ class MemoryWriteStorage:
 
     def get(self, key: str) -> bytes:
         return self.written[key] if key in self.written else self.inner.get(key)
+
+    def delete_prefix(self, prefix: str) -> int:
+        return 0  # a dry run never deletes
 
     def health(self) -> bool:
         return self.inner.health()
@@ -264,6 +271,7 @@ async def dry_run(
     agent_id: str,
     action: str,
     case_id: int,
+    owner_id: str,
 ) -> dict[str, Any]:
     agent_cfg = cfg.agents.get(agent_id)
     if agent_cfg is None:
@@ -283,12 +291,13 @@ async def dry_run(
         progress.append(msg)
 
     scratch_storage = MemoryWriteStorage(storage)
-    with scratch_sessions(engine) as sf:
+    with scratch_sessions(engine) as scratch:
         if isinstance(llm, AzureLLM):
             llm = copy.copy(llm)  # its response cache writes go to the scratch copy too
-            llm.session_factory = sf
+            llm.session_factory = scratch
+        sf = bind_owner(scratch, owner_id)  # the copy holds every workspace: the agent sees only this one
         with sf() as s:
-            case = s.get(Case, case_id)
+            case = s.scalars(scoped(select(Case).where(Case.id == case_id), owner_id)).first()
             if case is None:
                 raise StudioError(404, f"case {case_id} not found")
             ref = case.ref

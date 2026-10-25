@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.config_loader import ResolvedConfig
 from app.models import Case, CaseStatus, ReviewActionRow, RuleResult, StageEvent, StageStatus
+from app.tenancy import require_owner, scoped
 
 EXCLUDED = (CaseStatus.split_bundle,)  # a bundle parent is not an invoice; its children are counted
 
@@ -40,15 +41,16 @@ def metrics(s: Session, cfg: ResolvedConfig, range_value: str | None, now: datet
     start_day = (now - timedelta(days=days - 1)).date()
     since = datetime.combine(start_day, datetime.min.time(), tzinfo=UTC)
 
+    owner = require_owner(s)
     cases = s.scalars(
-        select(Case).where(Case.created_at >= since, Case.status.not_in(EXCLUDED)).order_by(Case.id)
+        scoped(select(Case).where(Case.created_at >= since, Case.status.not_in(EXCLUDED)), owner).order_by(Case.id)
     ).all()
     ids = [c.id for c in cases]
     reviewed = set(
-        s.scalars(select(ReviewActionRow.case_id).where(ReviewActionRow.case_id.in_(ids)).distinct()).all()
+        s.scalars(scoped(select(ReviewActionRow.case_id).where(ReviewActionRow.case_id.in_(ids)), owner).distinct()).all()
     ) if ids else set()
 
-    events = s.scalars(select(StageEvent).where(StageEvent.case_id.in_(ids))).all() if ids else []
+    events = s.scalars(scoped(select(StageEvent).where(StageEvent.case_id.in_(ids)), owner)).all() if ids else []
     first_decision: dict[int, datetime] = {}
     cost = Decimal(0)
     tokens = 0
@@ -98,16 +100,17 @@ def metrics(s: Session, cfg: ResolvedConfig, range_value: str | None, now: datet
     amount_by_rule: dict[str, Decimal] = defaultdict(Decimal)
     if ids:
         latest = (
-            select(RuleResult.case_id, func.max(RuleResult.run_no).label("run_no"))
+            scoped(select(RuleResult.case_id, func.max(RuleResult.run_no).label("run_no")), owner)
             .where(RuleResult.case_id.in_(ids))
             .group_by(RuleResult.case_id)
             .subquery()
         )
-        failed = s.execute(
+        failed = s.execute(scoped(
             select(RuleResult.rule_id, RuleResult.case_id)
             .join(latest, (latest.c.case_id == RuleResult.case_id) & (latest.c.run_no == RuleResult.run_no))
-            .where(RuleResult.status == "fail")
-        ).all()
+            .where(RuleResult.status == "fail"),
+            owner,
+        )).all()
         for rule_id, cid in {(r, c) for r, c in failed}:
             by_rule[rule_id] += 1
             amount_by_rule[rule_id] += by_id[cid].total or Decimal(0)
@@ -122,7 +125,8 @@ def metrics(s: Session, cfg: ResolvedConfig, range_value: str | None, now: datet
         for rid, n in by_rule.most_common()
     ]
 
-    live: dict[str, int] = {str(st): int(cnt) for st, cnt in s.execute(select(Case.status, func.count()).group_by(Case.status))}
+    live_q = scoped(select(Case.status, func.count()), owner).group_by(Case.status)
+    live: dict[str, int] = {str(st): int(cnt) for st, cnt in s.execute(live_q)}
     n = len(cases)
     return {
         "range": label,

@@ -24,6 +24,50 @@ class HealthOut(BaseModel):
     storage: str
     llm_path: str
     config_hash: str | None = None
+    auth_mode: str
+
+
+class MeOut(BaseModel):
+    id: str
+    email: str
+    name: str | None
+    avatar_url: str | None
+    mode: str  # unset | demo | byok
+    baseline_version: int | None  # the demo data version this workspace was seeded with
+    baseline_current: int  # the version the server ships
+    baseline_outdated: bool  # new demo data is available: "Reset demo data" to get it
+    auth_mode: str
+
+
+class ResetWorkspaceOut(BaseModel):
+    vendors: int
+    purchase_orders: int
+    po_lines: int
+    grns: int
+    gl_accounts: int
+    history_cases: int
+    baseline_version: int
+
+
+class FileTokenIn(BaseModel):
+    path: str = Field(description="API path of a file route, e.g. /api/cases/1/documents/2/file")
+
+
+class SignedUrlOut(BaseModel):
+    url: str  # the path with its short-lived token (?ft= for files, ?t= for the stream)
+    expires_in: int  # seconds
+
+
+class DevLoginIn(BaseModel):
+    email: str = Field(min_length=3, max_length=320, pattern=r"^[^@\s]+@[^@\s]+$")
+    name: str | None = Field(default=None, max_length=255)
+
+
+class DevLoginOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user_id: str
+    expires_in: int
 
 
 class DocumentOut(_ORM):
@@ -119,10 +163,21 @@ class CaseOut(_ORM):
     updated_at: datetime
     sla_due_at: datetime | None
     seed: bool = False
+    scenario_id: str | None = None
     approved_by: str | None = None
     approved_at: datetime | None = None
     exported_at: datetime | None = None
     latest_template_version: int | None = None  # newest ERP template (per-row download in the library)
+
+
+class ScenarioCaseOut(BaseModel):
+    id: int
+    ref: str | None
+    scenario_id: str | None
+
+
+class ScenarioRunOut(CaseOut):
+    prerequisites: list[ScenarioCaseOut] = []  # scenarios run first because this one builds on them
 
 
 class CaseDetailOut(CaseOut):
@@ -162,6 +217,7 @@ class FixtureOut(BaseModel):
     run_order: int | None
     expect: dict[str, Any]
     demo_remark: str | None
+    requires: list[str] = []  # scenarios run first when the workspace has no run of them
     available: bool
     supporting_files: list[FixtureFileOut]
 

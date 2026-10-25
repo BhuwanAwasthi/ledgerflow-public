@@ -9,7 +9,7 @@ import io
 import zipfile
 from typing import Any, Literal
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.case_state import fold_state
@@ -18,6 +18,7 @@ from app.exports.context import template_context
 from app.exports.render import Row, make_env, render_rows, render_string, to_bytes
 from app.models import Case, CaseStatus, ExportBatch, TemplateVersion, utcnow
 from app.storage import Storage
+from app.tenancy import next_seq, require_owner, scoped
 
 EXPORTABLE = (CaseStatus.approved, CaseStatus.exported)
 
@@ -37,8 +38,8 @@ def get_profile(cfg: ResolvedConfig, profile_id: str | None) -> ErpProfile:
 
 def final_template(s: Session, case_id: int) -> TemplateVersion | None:
     return s.scalars(
-        select(TemplateVersion)
-        .where(TemplateVersion.case_id == case_id, TemplateVersion.status == "final")
+        scoped(select(TemplateVersion).where(TemplateVersion.case_id == case_id, TemplateVersion.status == "final"),
+               require_owner(s))
         .order_by(TemplateVersion.version.desc())
     ).first()
 
@@ -63,9 +64,10 @@ def case_file(s: Session, case: Case, profile: ErpProfile, version: int | None =
     if version is None:
         rows, version = case_rows(s, case, profile)
     else:
-        tv = s.scalars(
-            select(TemplateVersion).where(TemplateVersion.case_id == case.id, TemplateVersion.version == version)
-        ).first()
+        tv = s.scalars(scoped(
+            select(TemplateVersion).where(TemplateVersion.case_id == case.id, TemplateVersion.version == version),
+            case.owner_id,
+        )).first()
         if tv is None:
             raise ExportError(404, f"{case.ref} has no template v{version}")
         if tv.erp_profile != profile.id:
@@ -77,7 +79,7 @@ def case_file(s: Session, case: Case, profile: ErpProfile, version: int | None =
 
 
 def profile_of(s: Session, tv: TemplateVersion, fallback: ErpProfile) -> ErpProfile:
-    case = s.get(Case, tv.case_id)
+    case = s.scalars(scoped(select(Case).where(Case.id == tv.case_id), tv.owner_id)).first()
     snapshot = (case.config_snapshot or {}) if case else {}
     try:  # the profile as configured when the case ran
         return from_snapshot(snapshot).erp_profiles[tv.erp_profile]
@@ -86,8 +88,8 @@ def profile_of(s: Session, tv: TemplateVersion, fallback: ErpProfile) -> ErpProf
 
 
 def next_ref(s: Session, cfg: ResolvedConfig) -> str:
-    n = (s.scalar(select(func.count()).select_from(ExportBatch)) or 0) + 1
-    return f"{cfg.app.exports.batch_ref_prefix}{n:04d}"
+    """Per-owner export refs (EXP-0001 restarts in every workspace)."""
+    return f"{cfg.app.exports.batch_ref_prefix}{next_seq(s, require_owner(s), 'export'):04d}"
 
 
 def create_export(
@@ -104,7 +106,7 @@ def create_export(
     ids = list(dict.fromkeys(case_ids))
     if not ids:
         raise ExportError(422, "select at least one approved invoice")
-    cases = {c.id: c for c in s.scalars(select(Case).where(Case.id.in_(ids))).all()}
+    cases = {c.id: c for c in s.scalars(scoped(select(Case).where(Case.id.in_(ids)), require_owner(s))).all()}
     missing = [i for i in ids if i not in cases]
     if missing:
         raise ExportError(404, f"case(s) not found: {missing}")

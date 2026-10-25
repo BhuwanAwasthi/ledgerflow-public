@@ -9,7 +9,8 @@ services:
     region: singapore
     buildCommand: pip install uv && uv --directory backend sync --frozen --no-dev
     # --no-sync: `uv run` would otherwise install the dev group on every start
-    startCommand: uv --directory backend run --no-sync uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # migrations first (Alembic), then the API
+    startCommand: uv --directory backend run --no-sync alembic upgrade head && uv --directory backend run --no-sync uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
     autoDeploy: true
     buildFilter:
@@ -30,6 +31,12 @@ services:
         value: azure
       - key: STORAGE_BACKEND
         value: supabase
+      - key: AUTH_MODE  # Supabase Auth (Google); verifies JWTs against <SUPABASE_URL>/auth/v1/.well-known/jwks.json
+        value: supabase
+      - key: FILE_TOKEN_SECRET  # HMAC key of the 60 s file links (PDF, page PNG, downloads)
+        generateValue: true
+      - key: SUPABASE_JWT_SECRET  # only for a project still on the legacy HS256 JWT secret; else leave unset
+        sync: false
       - key: SUPABASE_BUCKET
         value: documents
       - key: AZURE_OPENAI_ENDPOINT

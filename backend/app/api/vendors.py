@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app import po_ledger
 from app.api.cases import case_out
-from app.api.deps import get_orchestrator, get_session
+from app.api.deps import get_orchestrator, get_session, owned_or_404
 from app.api.schemas import (
     MasterImportOut,
     NotificationOut,
@@ -40,6 +40,7 @@ from app.models import (
 )
 from app.orchestrator import Orchestrator
 from app.portal import PortalError, approve_vendor, reject_vendor
+from app.tenancy import require_owner, scoped
 
 router = APIRouter(tags=["master data"])
 
@@ -50,7 +51,7 @@ OPEN = (CaseStatus.received, CaseStatus.processing, CaseStatus.needs_review, Cas
 
 @router.get("/api/vendors", response_model=list[VendorOut])
 def list_vendors(s: SessionDep, status: str | None = None) -> list[Vendor]:
-    stmt = select(Vendor).order_by(Vendor.code)
+    stmt = scoped(select(Vendor), require_owner(s)).order_by(Vendor.code)
     if status:
         stmt = stmt.where(Vendor.status.in_(status.split(",")))
     return list(s.scalars(stmt).all())
@@ -58,13 +59,18 @@ def list_vendors(s: SessionDep, status: str | None = None) -> list[Vendor]:
 
 @router.get("/api/vendors/{vendor_id}", response_model=VendorDetailOut)
 def get_vendor(vendor_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
-    v = s.get(Vendor, vendor_id)
-    if v is None:
-        raise HTTPException(404, f"vendor {vendor_id} not found")
+    v = owned_or_404(s, Vendor, vendor_id, require_owner(s), "vendor")
+    own = v.owner_id
     out = VendorOut.model_validate(v).model_dump()
-    out["requests"] = s.scalars(select(VendorRequest).where(VendorRequest.vendor_id == v.id).order_by(VendorRequest.id.desc())).all()
-    out["memory"] = [m.hint for m in s.scalars(select(VendorMemory).where(VendorMemory.vendor_id == v.id).order_by(VendorMemory.id.desc())).all()]
-    cases = s.scalars(select(Case).where(Case.vendor_id == v.id, Case.status.in_(OPEN)).order_by(Case.id)).all()
+    out["requests"] = s.scalars(
+        scoped(select(VendorRequest).where(VendorRequest.vendor_id == v.id), own).order_by(VendorRequest.id.desc())
+    ).all()
+    out["memory"] = [m.hint for m in s.scalars(
+        scoped(select(VendorMemory).where(VendorMemory.vendor_id == v.id), own).order_by(VendorMemory.id.desc())
+    ).all()]
+    cases = s.scalars(
+        scoped(select(Case).where(Case.vendor_id == v.id, Case.status.in_(OPEN)), own).order_by(Case.id)
+    ).all()
     out["open_cases"] = [case_out(s, orch, c) for c in cases]
     return out
 
@@ -86,7 +92,7 @@ def reject(vendor_id: int, body: VendorActionIn, s: SessionDep) -> dict[str, Any
 
 
 def _po_out(s: Session, po: PurchaseOrder) -> dict[str, Any]:
-    vendor = s.get(Vendor, po.vendor_id) if po.vendor_id else None
+    vendor = s.scalars(scoped(select(Vendor).where(Vendor.id == po.vendor_id), po.owner_id)).first() if po.vendor_id else None
     bal = po_ledger.balance(s, po)
     return {
         "id": po.id, "po_number": po.po_number, "vendor_id": po.vendor_id,
@@ -98,7 +104,7 @@ def _po_out(s: Session, po: PurchaseOrder) -> dict[str, Any]:
 
 @router.get("/api/pos", response_model=list[POOut])
 def list_pos(s: SessionDep, vendor: int | None = None) -> list[dict[str, Any]]:
-    stmt = select(PurchaseOrder).order_by(PurchaseOrder.po_number)
+    stmt = scoped(select(PurchaseOrder), require_owner(s)).order_by(PurchaseOrder.po_number)
     if vendor is not None:
         stmt = stmt.where(PurchaseOrder.vendor_id == vendor)
     return [_po_out(s, po) for po in s.scalars(stmt).all()]
@@ -106,22 +112,29 @@ def list_pos(s: SessionDep, vendor: int | None = None) -> list[dict[str, Any]]:
 
 @router.get("/api/pos/{po_id}", response_model=PODetailOut)
 def get_po(po_id: int, s: SessionDep) -> dict[str, Any]:
-    po = s.get(PurchaseOrder, po_id)
-    if po is None:
-        raise HTTPException(404, f"PO {po_id} not found")
+    po = owned_or_404(s, PurchaseOrder, po_id, require_owner(s), "PO")
+    own = po.owner_id
     out = _po_out(s, po)
-    out["lines"] = s.scalars(select(POLine).where(POLine.po_id == po.id).order_by(POLine.line_no)).all()
+    out["lines"] = s.scalars(scoped(select(POLine).where(POLine.po_id == po.id), own).order_by(POLine.line_no)).all()
     rows = []
-    for c in s.scalars(select(POConsumption).where(POConsumption.po_id == po.id).order_by(POConsumption.id)).all():
+    consumption = s.scalars(
+        scoped(select(POConsumption).where(POConsumption.po_id == po.id), own).order_by(POConsumption.id)
+    ).all()
+    for c in consumption:
         row = POConsumptionOut.model_validate(c).model_dump()
-        case = s.get(Case, c.case_id)
+        case = s.scalars(scoped(select(Case).where(Case.id == c.case_id), own)).first()
         if case is not None:
-            parent = s.get(Case, case.parent_case_id) if case.parent_case_id else None
+            parent = (
+                s.scalars(scoped(select(Case).where(Case.id == case.parent_case_id), own)).first()
+                if case.parent_case_id else None
+            )
             row.update(case_ref=case.ref, case_status=case.status, invoice_number=case.invoice_number,
                        split_from=parent.ref if parent else None)
         rows.append(row)
     out["consumption"] = rows
-    out["amendments"] = s.scalars(select(POAmendment).where(POAmendment.po_id == po.id).order_by(POAmendment.id)).all()
+    out["amendments"] = s.scalars(
+        scoped(select(POAmendment).where(POAmendment.po_id == po.id), own).order_by(POAmendment.id)
+    ).all()
     return out
 
 
@@ -164,7 +177,7 @@ async def import_master(
 
 @router.get("/api/notifications", response_model=list[NotificationOut])
 def notifications(s: SessionDep, audience: str | None = None, case_id: int | None = None, limit: int = 50) -> list[Notification]:
-    stmt = select(Notification).order_by(Notification.id.desc()).limit(min(max(limit, 1), 200))
+    stmt = scoped(select(Notification), require_owner(s)).order_by(Notification.id.desc()).limit(min(max(limit, 1), 200))
     if audience:
         stmt = stmt.where(Notification.audience == audience)
     if case_id is not None:
@@ -174,9 +187,7 @@ def notifications(s: SessionDep, audience: str | None = None, case_id: int | Non
 
 @router.post("/api/notifications/{notification_id}/read", response_model=NotificationOut)
 def mark_read(notification_id: int, s: SessionDep) -> Notification:
-    n = s.get(Notification, notification_id)
-    if n is None:
-        raise HTTPException(404, f"notification {notification_id} not found")
+    n = owned_or_404(s, Notification, notification_id, require_owner(s), "notification")
     n.read = True
     s.commit()
     return n

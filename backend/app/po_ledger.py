@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import POAmendment, POConsumption, PurchaseOrder
+from app.tenancy import require_owner, scoped
 
 ACTIVE = ("reserved", "consumed")
 
@@ -32,7 +33,7 @@ def committed(s: Session, po_id: int, *, exclude_case_id: int | None = None) -> 
     )
     if exclude_case_id is not None:
         q = q.where(POConsumption.case_id != exclude_case_id)
-    return Decimal(str(s.scalar(q) or 0))
+    return Decimal(str(s.scalar(scoped(q, require_owner(s))) or 0))
 
 
 def committed_qty_by_line(s: Session, po_id: int, *, exclude_case_id: int | None = None) -> dict[int, Decimal]:
@@ -48,14 +49,16 @@ def committed_qty_by_line(s: Session, po_id: int, *, exclude_case_id: int | None
     )
     if exclude_case_id is not None:
         q = q.where(POConsumption.case_id != exclude_case_id)
+    q = scoped(q, require_owner(s))
     return {line_id: Decimal(str(qty)) for line_id, qty in s.execute(q).all() if line_id is not None}
 
 
 def release(s: Session, case_id: int) -> Decimal:
     """Release this case's open reservations. Returns the amount released."""
-    rows = s.scalars(
-        select(POConsumption).where(POConsumption.case_id == case_id, POConsumption.state == "reserved")
-    ).all()
+    rows = s.scalars(scoped(
+        select(POConsumption).where(POConsumption.case_id == case_id, POConsumption.state == "reserved"),
+        require_owner(s),
+    )).all()
     for r in rows:
         r.state = "released"
     return sum((r.amount for r in rows), Decimal(0))
@@ -80,9 +83,10 @@ def reserve(s: Session, case_id: int, po_id: int, lines: list[Reservation]) -> D
 
 def consume(s: Session, case_id: int) -> None:
     """Approval turns the reservation into consumption (caller commits)."""
-    for r in s.scalars(
-        select(POConsumption).where(POConsumption.case_id == case_id, POConsumption.state == "reserved")
-    ).all():
+    for r in s.scalars(scoped(
+        select(POConsumption).where(POConsumption.case_id == case_id, POConsumption.state == "reserved"),
+        require_owner(s),
+    )).all():
         r.state = "consumed"
 
 
@@ -109,11 +113,12 @@ def amend(
 
 
 def balance(s: Session, po: PurchaseOrder) -> dict[str, Decimal]:
-    rows = s.execute(
+    rows = s.execute(scoped(
         select(POConsumption.state, func.coalesce(func.sum(POConsumption.amount), 0))
         .where(POConsumption.po_id == po.id)
-        .group_by(POConsumption.state)
-    ).all()
+        .group_by(POConsumption.state),
+        po.owner_id,
+    )).all()
     by_state = {state: Decimal(str(v)) for state, v in rows}
     consumed, reserved = by_state.get("consumed", Decimal(0)), by_state.get("reserved", Decimal(0))
     return {

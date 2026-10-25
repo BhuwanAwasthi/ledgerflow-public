@@ -1,14 +1,18 @@
-"""Deploy smoke test: /healthz, then run one scenario end-to-end and compare it with its `expect`.
+"""Deploy smoke test: /healthz, the auth wall, then run one scenario end-to-end and compare it with its
+`expect`.
 
     uv run python -m scripts.smoke_deploy https://ledgerflow-api.onrender.com [--scenario S01_happy]
+        [--token <a Supabase access token>]   (or SMOKE_TOKEN)
 
 Waits out a Render cold start (the free plan sleeps after 15 min). Exits 1 if the health check is not
-db=ok, storage=ok with a probed llm_path, or if the case finishes with a different decision than expected.
+db=ok, storage=ok with a probed llm_path, if an API route answers without a token, or if the case finishes
+with a different decision than expected. Without a token it stops after the auth-wall check.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 
@@ -54,11 +58,21 @@ def main() -> None:
     ap.add_argument("--health-timeout", type=float, default=180, help="seconds to wait out a cold start")
     ap.add_argument("--run-timeout", type=float, default=300)
     ap.add_argument("--allow-fake-llm", action="store_true", help="accept llm_path=fake (local checks only)")
+    ap.add_argument("--token", default=os.environ.get("SMOKE_TOKEN"), help="bearer token of a signed-in user")
     args = ap.parse_args()
 
     with httpx.Client(base_url=args.base_url.rstrip("/"), timeout=60) as client:
         health = wait_healthy(client, args.health_timeout, allow_fake=args.allow_fake_llm)
-        print(f"OK /healthz db={health['db']} storage={health['storage']} llm_path={health['llm_path']}")
+        print(f"OK /healthz db={health['db']} storage={health['storage']} llm_path={health['llm_path']} "
+              f"auth={health.get('auth_mode')}")
+        wall = client.get("/api/fixtures")
+        if wall.status_code != 401:
+            sys.exit(f"FAIL /api/fixtures answered {wall.status_code} without a token (expected 401)")
+        print("OK auth wall: /api/fixtures needs a token")
+        if not args.token:
+            print("no --token / SMOKE_TOKEN: skipping the scenario run")
+            return
+        client.headers["Authorization"] = f"Bearer {args.token}"
         expect, case = run_scenario(client, args.scenario, args.run_timeout)
 
     want = expect.get("decision")

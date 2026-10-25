@@ -16,6 +16,7 @@ router = APIRouter(tags=["system"])
 
 @router.get("/healthz", response_model=HealthOut)
 def healthz(request: Request) -> HealthOut:
+    """The only public route (app.auth.PUBLIC_PATHS): liveness, DB, storage and the auth mode."""
     state = request.app.state
     try:
         with state.session_factory() as s:
@@ -33,6 +34,7 @@ def healthz(request: Request) -> HealthOut:
         storage=storage,
         llm_path=state.llm.path if state.llm is not None else "unconfigured",
         config_hash=getattr(state, "config_hash", None),
+        auth_mode=state.settings.auth_mode,
     )
 
 

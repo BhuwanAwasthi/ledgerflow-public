@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app import po_ledger
 from app.models import POLine, PurchaseOrder, Vendor
+from app.tenancy import require_owner, scoped
 
 Entity = Literal["vendors", "purchase_orders", "po_lines"]
 
@@ -82,10 +83,10 @@ def export_csv(s: Session, entity: Entity) -> str:
                 "status": v.status, "default_gl": v.default_gl or "",
                 "non_po_allowed": "true" if v.non_po_allowed else "false",
             }
-            for v in s.scalars(select(Vendor).order_by(Vendor.code)).all()
+            for v in s.scalars(scoped(select(Vendor), require_owner(s)).order_by(Vendor.code)).all()
         ])
-    codes = {v.id: v.code for v in s.scalars(select(Vendor)).all()}
-    pos = s.scalars(select(PurchaseOrder).order_by(PurchaseOrder.po_number)).all()
+    codes = {v.id: v.code for v in s.scalars(scoped(select(Vendor), require_owner(s))).all()}
+    pos = s.scalars(scoped(select(PurchaseOrder), require_owner(s)).order_by(PurchaseOrder.po_number)).all()
     if entity == "purchase_orders":
         return _write(entity, [
             {
@@ -97,7 +98,7 @@ def export_csv(s: Session, entity: Entity) -> str:
             for po in pos
         ])
     numbers = {po.id: po.po_number for po in pos}
-    lines = s.scalars(select(POLine)).all()
+    lines = s.scalars(scoped(select(POLine), require_owner(s))).all()
     return _write(entity, [
         {
             "po_number": numbers[ln.po_id], "line_no": ln.line_no, "description": ln.description,
@@ -187,7 +188,7 @@ def _dupes(keys: list[Any], label: str) -> list[str]:
 
 def _import_vendors(s: Session, rows: list[dict[str, str]]) -> ImportReport:
     errors = _dupes([r["code"] for r in rows], "vendor")
-    existing = {v.code: v for v in s.scalars(select(Vendor)).all()}
+    existing = {v.code: v for v in s.scalars(scoped(select(Vendor), require_owner(s))).all()}
     parsed: list[tuple[str, dict[str, Any]]] = []
     for n, r in enumerate(rows, start=2):
         where = f"row {n} ({r['code'] or 'no code'})"
@@ -235,8 +236,8 @@ def _import_vendors(s: Session, rows: list[dict[str, str]]) -> ImportReport:
 
 def _import_pos(s: Session, rows: list[dict[str, str]], actor: str) -> ImportReport:
     errors = _dupes([r["po_number"] for r in rows], "PO")
-    vendors = {v.code: v.id for v in s.scalars(select(Vendor)).all()}
-    existing = {po.po_number: po for po in s.scalars(select(PurchaseOrder)).all()}
+    vendors = {v.code: v.id for v in s.scalars(scoped(select(Vendor), require_owner(s))).all()}
+    existing = {po.po_number: po for po in s.scalars(scoped(select(PurchaseOrder), require_owner(s))).all()}
     parsed: list[tuple[str, dict[str, Any]]] = []
     for n, r in enumerate(rows, start=2):
         where = f"row {n} ({r['po_number'] or 'no PO number'})"
@@ -281,8 +282,8 @@ def _import_pos(s: Session, rows: list[dict[str, str]], actor: str) -> ImportRep
 
 def _import_lines(s: Session, rows: list[dict[str, str]]) -> ImportReport:
     errors = _dupes([(r["po_number"], r["line_no"]) for r in rows], "PO line")
-    pos = {po.po_number: po.id for po in s.scalars(select(PurchaseOrder)).all()}
-    existing = {(ln.po_id, ln.line_no): ln for ln in s.scalars(select(POLine)).all()}
+    pos = {po.po_number: po.id for po in s.scalars(scoped(select(PurchaseOrder), require_owner(s))).all()}
+    existing = {(ln.po_id, ln.line_no): ln for ln in s.scalars(scoped(select(POLine), require_owner(s))).all()}
     parsed: list[tuple[int, int, dict[str, Any]]] = []
     for n, r in enumerate(rows, start=2):
         where = f"row {n} ({r['po_number'] or 'no PO number'} line {r['line_no'] or '?'})"

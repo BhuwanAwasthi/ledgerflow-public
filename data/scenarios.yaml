@@ -129,6 +129,7 @@ scenarios:
     file: S02b_brightline_BL-0107.pdf
     render: clean
     expect: { decision: needs_review, failed_rules: [po_balance, unmatched_lines] }
+    requires: [S02a_split_part1]   # the launcher runs S02a first when the workspace has no run of it
     demo_remark: "PO was amended to $10,500 by procurement. Accept the premium support line and code it to 6410."
     invoice:
       vendor: V002
@@ -168,6 +169,7 @@ scenarios:
     copy_of: S01_happy
     override: { invoice_number_printed: "INV A2207" }
     expect: { decision: reject, failed_rules: [duplicate_exact], duplicate_of: S01_happy }
+    requires: [S01_happy]          # a duplicate needs the original in the workspace
 
   - id: S05_unknown_vendor
     title: Vendor not in master, no PO -> onboarding mini-flow

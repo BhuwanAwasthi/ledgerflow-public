@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import TERMINAL_STATUSES, CaseStatus, ConfigVersion, ReviewAction
+from app.tenancy import require_owner, scoped
 
 SKIPPED = "skipped"
 END_PREFIX = "end:"
@@ -68,6 +69,12 @@ class Limits(_Open):
     pipeline_concurrency: int = Field(ge=1)
     stage_timeout_s: float = Field(gt=0)
     max_stages_per_run: int = Field(ge=1)
+
+
+class AuthSettings(_Strict):
+    stream_token_ttl_s: int = Field(default=60, ge=5, le=300)  # single-use SSE token
+    file_token_ttl_s: int = Field(default=60, ge=5, le=300)  # HMAC token on file GETs (PDF, PNG, downloads)
+    last_seen_update_s: int = Field(default=300, ge=0)  # users.last_seen_at is written at most this often
 
 
 class ExportSettings(_Open):
@@ -123,6 +130,7 @@ class AppConfig(_Open):
     llm: LLMSettings
     limits: Limits
     exports: ExportSettings = Field(default_factory=ExportSettings)
+    auth: AuthSettings = Field(default_factory=AuthSettings)
     ui: UISettings = Field(default_factory=UISettings)
 
 
@@ -314,14 +322,16 @@ def load_brand_guard(config_dir: Path) -> BrandGuardConfig:
 
 
 def load_overrides(session: Session) -> dict[str, str]:
-    """Latest active DB version per path (Agent Studio edits)."""
-    rows = session.scalars(
-        select(ConfigVersion).where(ConfigVersion.active.is_(True)).order_by(ConfigVersion.version)
-    ).all()
+    """Latest active DB version per path (Agent Studio edits) of the session's owner."""
+    rows = session.scalars(scoped(
+        select(ConfigVersion).where(ConfigVersion.active.is_(True)).order_by(ConfigVersion.version),
+        require_owner(session),
+    )).all()
     return {r.path: r.content for r in rows}
 
 
 def resolved_config(config_dir: Path, session: Session | None = None) -> ResolvedConfig:
+    """The config files, plus the overrides of the session's owner when a session is given."""
     files = read_config_files(config_dir)
     if session is not None:
         files.update(load_overrides(session))
@@ -334,7 +344,7 @@ def save_override(session: Session, config_dir: Path, path: str, content: str, a
     files.update(load_overrides(session))
     files[path] = content
     cfg = build_config(files)  # raises ConfigError, nothing saved
-    prev = session.scalars(select(ConfigVersion).where(ConfigVersion.path == path)).all()
+    prev = session.scalars(scoped(select(ConfigVersion).where(ConfigVersion.path == path), require_owner(session))).all()
     for row in prev:
         row.active = False
     version = max((r.version for r in prev), default=0) + 1
@@ -344,7 +354,8 @@ def save_override(session: Session, config_dir: Path, path: str, content: str, a
 
 
 def reset_override(session: Session, path: str) -> None:
-    for row in session.scalars(select(ConfigVersion).where(ConfigVersion.path == path)).all():
+    rows = session.scalars(scoped(select(ConfigVersion).where(ConfigVersion.path == path), require_owner(session)))
+    for row in rows.all():
         row.active = False
     session.commit()
 

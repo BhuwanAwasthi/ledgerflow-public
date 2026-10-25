@@ -10,12 +10,21 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
-from app import pdf
-from app.api.deps import current_config, get_orchestrator, get_session, get_storage
-from app.api.schemas import CaseDetailOut, CaseListOut, CaseOut, JourneyOut, RerunIn, ReviewIn, WorkspaceOut
+from app.api.deps import CurrentUser, current_config, get_orchestrator, get_session, get_storage, owned_or_404
+from app.api.schemas import (
+    CaseDetailOut,
+    CaseListOut,
+    CaseOut,
+    JourneyOut,
+    RerunIn,
+    ReviewIn,
+    SignedUrlOut,
+    WorkspaceOut,
+)
 from app.cases import UploadedFile, create_case
 from app.config_loader import ResolvedConfig
 from app.db import dumps
+from app.documents import png_key
 from app.exports.audit_pack import build_audit_pack
 from app.exports.service import ExportError, case_file, get_profile
 from app.journey import build_journey
@@ -31,6 +40,8 @@ from app.models import (
 )
 from app.orchestrator import Orchestrator, OrchestratorError, case_summary, event_to_dict
 from app.storage import Storage
+from app.tenancy import bind_owner, require_owner, scoped
+from app.tokens import issue_stream_token
 from app.workspace import build_workspace
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
@@ -42,10 +53,10 @@ OrchDep = Annotated[Orchestrator, Depends(get_orchestrator)]
 def case_out(s: Session, orch: Orchestrator, case: Case) -> dict[str, Any]:
     out = CaseOut.model_validate(case).model_dump()
     if case.vendor_id is not None:
-        vendor = s.get(Vendor, case.vendor_id)
+        vendor = s.scalars(scoped(select(Vendor).where(Vendor.id == case.vendor_id), case.owner_id)).first()
         out["vendor_name"] = vendor.legal_name if vendor else None
     out["latest_template_version"] = s.scalar(
-        select(func.max(TemplateVersion.version)).where(TemplateVersion.case_id == case.id)
+        scoped(select(func.max(TemplateVersion.version)).where(TemplateVersion.case_id == case.id), case.owner_id)
     )
     stage_id = case.current_stage
     if stage_id and not stage_id.startswith("end:") and case.config_snapshot:
@@ -57,10 +68,8 @@ def case_out(s: Session, orch: Orchestrator, case: Case) -> dict[str, Any]:
 
 
 def _load_case(s: Session, case_id: int) -> Case:
-    case = s.get(Case, case_id)
-    if case is None:
-        raise HTTPException(404, f"case {case_id} not found")
-    return case
+    """The case when it is in the session owner's workspace, else 404."""
+    return owned_or_404(s, Case, case_id, require_owner(s), "case")
 
 
 @router.post("", response_model=CaseOut, status_code=201)
@@ -110,7 +119,7 @@ def list_cases(
     page: int = 1,
     page_size: int = 50,
 ) -> dict[str, Any]:
-    stmt = select(Case)
+    stmt = scoped(select(Case), require_owner(s))
     if status:
         stmt = stmt.where(Case.status.in_(status.split(",")))
     if vendor is not None:
@@ -136,46 +145,61 @@ def list_cases(
 @router.get("/{case_id}", response_model=CaseDetailOut)
 def get_case(case_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     case = _load_case(s, case_id)
+    own = case.owner_id
     out = case_out(s, orch, case)
-    last_rule_run = s.scalar(select(func.max(RuleResult.run_no)).where(RuleResult.case_id == case_id))
+    last_rule_run = s.scalar(scoped(select(func.max(RuleResult.run_no)).where(RuleResult.case_id == case_id), own))
     out.update(
-        documents=s.scalars(select(Document).where(Document.case_id == case_id).order_by(Document.id)).all(),
+        documents=s.scalars(
+            scoped(select(Document).where(Document.case_id == case_id), own).order_by(Document.id)
+        ).all(),
         extraction=s.scalars(
-            select(Extraction).where(Extraction.case_id == case_id).order_by(Extraction.version.desc())
+            scoped(select(Extraction).where(Extraction.case_id == case_id), own).order_by(Extraction.version.desc())
         ).first(),
         rule_results=s.scalars(
-            select(RuleResult).where(RuleResult.case_id == case_id, RuleResult.run_no == last_rule_run)
+            scoped(select(RuleResult).where(RuleResult.case_id == case_id, RuleResult.run_no == last_rule_run), own)
         ).all()
         if last_rule_run
         else [],
         templates=s.scalars(
-            select(TemplateVersion)
-            .where(TemplateVersion.case_id == case_id)
+            scoped(select(TemplateVersion).where(TemplateVersion.case_id == case_id), own)
             .order_by(TemplateVersion.version)
         ).all(),
         review_actions=s.scalars(
-            select(ReviewActionRow).where(ReviewActionRow.case_id == case_id).order_by(ReviewActionRow.id)
+            scoped(select(ReviewActionRow).where(ReviewActionRow.case_id == case_id), own).order_by(ReviewActionRow.id)
         ).all(),
         events=s.scalars(
-            select(StageEvent).where(StageEvent.case_id == case_id).order_by(StageEvent.seq)
+            scoped(select(StageEvent).where(StageEvent.case_id == case_id), own).order_by(StageEvent.seq)
         ).all(),
     )
     return out
+
+
+@router.post("/{case_id}/stream-token", response_model=SignedUrlOut)
+def stream_token(case_id: int, request: Request, s: SessionDep) -> dict[str, Any]:
+    """A single-use, 60-second token for the SSE stream (browser EventSource cannot send the Authorization
+    header): open `url` within the minute."""
+    case = _load_case(s, case_id)
+    ttl = request.app.state.base_config.app.auth.stream_token_ttl_s
+    token = issue_stream_token(s, case.owner_id, case.id, ttl)
+    s.commit()
+    return {"url": f"/api/cases/{case.id}/events/stream?t={token}", "expires_in": ttl}
 
 
 @router.get("/{case_id}/events/stream")
 async def stream_events(
     case_id: int,
     request: Request,
+    user: CurrentUser,
     follow: bool = True,
     after: int | None = None,
     last_event_id: Annotated[str | None, Header()] = None,
 ) -> EventSourceResponse:
     """SSE: replays stored stage_events (after Last-Event-ID, or `after` = the last seq the client has, for a
     manual reconnect), then streams live `stage_event`, `case_updated` and `progress` events.
-    `follow=false` closes after the replay."""
+    `follow=false` closes after the replay. Authenticates with the Authorization header or with `?t=`, a token
+    from POST /stream-token (app.auth)."""
     orch: Orchestrator = request.app.state.orchestrator
-    sf = request.app.state.session_factory
+    sf = bind_owner(request.app.state.session_factory, user)
 
     def check() -> None:
         with sf() as s:
@@ -189,8 +213,7 @@ async def stream_events(
     def replay() -> tuple[list[dict[str, Any]], dict[str, Any]]:
         with sf() as s:
             history = s.scalars(
-                select(StageEvent)
-                .where(StageEvent.case_id == case_id, StageEvent.seq > after)
+                scoped(select(StageEvent).where(StageEvent.case_id == case_id, StageEvent.seq > after), user)
                 .order_by(StageEvent.seq)
             ).all()
             return [event_to_dict(ev) for ev in history], case_summary(_load_case(s, case_id))
@@ -257,7 +280,9 @@ async def rerun(case_id: int, body: RerunIn, s: SessionDep, orch: OrchDep) -> di
 def journey(case_id: int, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
     """Courier-style tracker for the submitter (steps from app.yaml `ui.journey`)."""
     case = _load_case(s, case_id)
-    events = s.scalars(select(StageEvent).where(StageEvent.case_id == case_id).order_by(StageEvent.seq)).all()
+    events = s.scalars(
+        scoped(select(StageEvent).where(StageEvent.case_id == case_id), case.owner_id).order_by(StageEvent.seq)
+    ).all()
     return build_journey(orch.case_config(s, case), case, list(events))
 
 
@@ -278,9 +303,10 @@ def download_template(case_id: int, version: int, s: SessionDep, orch: OrchDep) 
     """One template version as the ERP profile's file (csv | xlsx)."""
     case = _load_case(s, case_id)
     cfg = orch.case_config(s, case)
-    tv = s.scalars(
-        select(TemplateVersion).where(TemplateVersion.case_id == case_id, TemplateVersion.version == version)
-    ).first()
+    tv = s.scalars(scoped(
+        select(TemplateVersion).where(TemplateVersion.case_id == case_id, TemplateVersion.version == version),
+        case.owner_id,
+    )).first()
     if tv is None:
         raise HTTPException(404, f"{case.ref} has no template v{version}")
     try:
@@ -298,8 +324,8 @@ def audit_pack(case_id: int, s: SessionDep, orch: OrchDep) -> Response:
 
 
 def _document(s: Session, case_id: int, doc_id: int) -> Document:
-    doc = s.get(Document, doc_id)
-    if doc is None or doc.case_id != case_id:
+    doc = owned_or_404(s, Document, doc_id, require_owner(s), "document")
+    if doc.case_id != case_id:
         raise HTTPException(404, f"document {doc_id} not found on case {case_id}")
     return doc
 
@@ -320,7 +346,7 @@ def document_page(
     if not 1 <= page <= (doc.pages or 0):
         raise HTTPException(404, f"{doc.filename} has no page {page}")
     try:
-        data = storage.get(pdf.page_png_key(doc.sha256, page))
+        data = storage.get(png_key(doc, page))
     except (FileNotFoundError, OSError) as e:
         raise HTTPException(404, f"page {page} of {doc.filename} is not rendered") from e
     return Response(data, media_type="image/png")

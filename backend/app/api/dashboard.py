@@ -13,6 +13,7 @@ from app.config_loader import ResolvedConfig
 from app.dashboard import EXCLUDED, RangeError, metrics
 from app.models import Case
 from app.orchestrator import Orchestrator
+from app.tenancy import require_owner, scoped
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -30,7 +31,9 @@ def dashboard_metrics(
     except RangeError as e:
         raise HTTPException(422, str(e)) from e
     recent = s.scalars(
-        select(Case).where(Case.status.not_in(EXCLUDED)).order_by(Case.id.desc()).limit(cfg.app.ui.dashboard.recent_cases)
+        scoped(select(Case).where(Case.status.not_in(EXCLUDED)), require_owner(s))
+        .order_by(Case.id.desc())
+        .limit(cfg.app.ui.dashboard.recent_cases)
     ).all()
     out["recent"] = [case_out(s, orch, c) for c in recent]
     return out

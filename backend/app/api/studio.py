@@ -35,6 +35,7 @@ from app.studio import (
     require_path,
     validate_edit,
 )
+from app.tenancy import require_owner
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
@@ -98,7 +99,8 @@ async def test_agent(
     try:
         # on the orchestrator loop: the LLM client is only ever used from there
         return await orch.call(
-            dry_run(engine, cfg, request.app.state.llm, storage, body.agent, body.action, body.case_id)
+            dry_run(engine, cfg, request.app.state.llm, storage, body.agent, body.action, body.case_id,
+                    require_owner(s))
         )
     except StudioError as e:
         raise _studio_error(e) from e
@@ -126,7 +128,6 @@ def put_file(path: str, body: ConfigSaveIn, request: Request, s: SessionDep, set
         except ConfigError as e:
             s.rollback()
             raise _invalid(e) from e
-    request.app.state.config_hash = cfg.hash
     return {**file_view(s, settings.config_dir, path), "config_hash": cfg.hash}
 
 
@@ -146,5 +147,4 @@ def reset_file(path: str, request: Request, s: SessionDep, settings: SettingsDep
             raise _invalid(ConfigError(errors))
         reset_override(s, path)
         cfg = resolved_config(settings.config_dir, s)
-    request.app.state.config_hash = cfg.hash
     return {**file_view(s, settings.config_dir, path), "config_hash": cfg.hash}

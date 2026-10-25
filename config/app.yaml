@@ -33,6 +33,11 @@ limits:
   stage_timeout_s: 180
   max_stages_per_run: 100   # guard against a workflow loop that never pauses
 
+auth:
+  stream_token_ttl_s: 60       # single-use token for the SSE stream (EventSource cannot send a header)
+  file_token_ttl_s: 60         # HMAC token for file GETs (PDF, page PNG, template, ZIP, audit pack)
+  last_seen_update_s: 300      # users.last_seen_at is written at most once per 5 minutes
+
 exports:
   batch_ref_prefix: EXP-                                          # export batch refs: EXP-0001, EXP-0002...
   zip_filename_template: "AP_EXPORT_{{ batch.ref }}_{{ profile.id }}.zip"   # mode=zip: one file per invoice inside

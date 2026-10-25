@@ -42,6 +42,7 @@ from app.llm_schemas import (
 )
 from app.models import Case, GLAccount, POLine, PurchaseOrder, ReviewActionRow, TemplateVersion, VendorMemory
 from app.rules.engine import fmt_money
+from app.tenancy import require_owner, scoped
 
 _PATH = re.compile(r"^(?P<field>[a-z_]+)(?:\[(?P<idx>\d+)\]\.(?P<sub>[a-z_]+)|\.(?P<bank>[a-z_0-9]+))?$")
 _NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
@@ -330,7 +331,7 @@ class ReconcilerAgent(Agent):
         n = len(d.invoice.get("lines") or [])
         if not 0 <= op.line_index < n:
             raise ValueError(f"line {op.line_index} does not exist (the invoice has {n} line(s))")
-        acct = s.get(GLAccount, op.gl_code)
+        acct = s.scalars(scoped(select(GLAccount).where(GLAccount.code == op.gl_code), require_owner(s))).first()
         if acct is None:
             raise ValueError(f"GL account {op.gl_code} is not in the chart of accounts")
         d.gl_overrides[str(op.line_index)] = {"gl_code": acct.code, "gl_name": acct.name, "department": op.department}
@@ -339,7 +340,8 @@ class ReconcilerAgent(Agent):
 
     @staticmethod
     def _link_po(s: Session, ctx: AgentContext, case: Case, op: LinkPOOp, d: _Draft) -> None:
-        po = next((p for p in s.scalars(select(PurchaseOrder)).all() if _norm_po(p.po_number) == _norm_po(op.po_number)), None)
+        pos = s.scalars(scoped(select(PurchaseOrder), require_owner(s))).all()
+        po = next((p for p in pos if _norm_po(p.po_number) == _norm_po(op.po_number)), None)
         if po is None:
             raise ValueError(f"PO {op.po_number} does not exist")
         if po.status != "open":
@@ -347,7 +349,7 @@ class ReconcilerAgent(Agent):
         if case.vendor_id is None or po.vendor_id != case.vendor_id:
             raise ValueError(f"PO {po.po_number} belongs to a different vendor")
         pm_params = ctx.config.agents["po_matching"].params
-        po_lines = s.scalars(select(POLine).where(POLine.po_id == po.id)).all()
+        po_lines = s.scalars(scoped(select(POLine).where(POLine.po_id == po.id), require_owner(s))).all()
         pairs: dict[int, int | None] = {}
         for i, ln in enumerate(d.invoice.get("lines") or []):
             scored = [

@@ -1,10 +1,13 @@
-"""Public vendor portal (no login): the token in the upload link identifies the request."""
+"""Vendor portal: the token in the upload link identifies the request. In this public demo the portal
+also needs sign-in and ownership: a user only reaches the requests of their own workspace (they play the
+vendor). A production deployment would make it public, token-only (docs/DECISIONS.md)."""
 
 from __future__ import annotations
 
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_orchestrator, get_session, get_storage
@@ -14,6 +17,7 @@ from app.models import Case
 from app.orchestrator import Orchestrator
 from app.portal import PortalError, get_request, request_view, vendor_docs_received
 from app.storage import Storage
+from app.tenancy import scoped
 
 router = APIRouter(prefix="/portal", tags=["portal"])
 
@@ -27,7 +31,7 @@ def portal(token: str, s: SessionDep, orch: OrchDep) -> dict[str, Any]:
         req = get_request(s, token)
     except PortalError as e:
         raise HTTPException(e.status, str(e)) from e
-    case = s.get(Case, req.case_id) if req.case_id else None
+    case = s.scalars(scoped(select(Case).where(Case.id == req.case_id), req.owner_id)).first() if req.case_id else None
     return request_view(s, req, orch.case_config(s, case) if case else None)
 
 

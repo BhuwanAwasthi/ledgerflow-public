@@ -10,13 +10,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.cases import case_out
-from app.api.deps import current_config, get_orchestrator, get_session, get_storage
+from app.api.deps import current_config, get_orchestrator, get_session, get_storage, owned_or_404
 from app.api.schemas import CaseListOut, ExportBatchOut, ExportIn
 from app.config_loader import ResolvedConfig
 from app.exports.service import EXPORTABLE, ExportError, batch_file, create_export
 from app.models import Case, CaseStatus, ExportBatch
 from app.orchestrator import Orchestrator
 from app.storage import Storage
+from app.tenancy import require_owner, scoped
 
 router = APIRouter(tags=["exports"])
 
@@ -45,7 +46,7 @@ def approved(
 ) -> dict[str, Any]:
     """Approved library. `exported=false` = not exported yet; `true` = already exported; omit for both."""
     statuses = {None: list(EXPORTABLE), False: [CaseStatus.approved], True: [CaseStatus.exported]}[exported]
-    stmt = select(Case).where(Case.status.in_(statuses), Case.seed.is_(False))
+    stmt = scoped(select(Case).where(Case.status.in_(statuses), Case.seed.is_(False)), require_owner(s))
     total = s.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     page, page_size = max(page, 1), min(max(page_size, 1), 200)
     rows = s.scalars(stmt.order_by(Case.approved_at.desc(), Case.id.desc()).offset((page - 1) * page_size).limit(page_size)).all()
@@ -65,14 +66,13 @@ def export(
 
 @router.get("/api/exports", response_model=list[ExportBatchOut])
 def list_exports(s: SessionDep) -> list[dict[str, Any]]:
-    return [batch_out(b) for b in s.scalars(select(ExportBatch).order_by(ExportBatch.id.desc())).all()]
+    rows = s.scalars(scoped(select(ExportBatch), require_owner(s)).order_by(ExportBatch.id.desc())).all()
+    return [batch_out(b) for b in rows]
 
 
 @router.get("/api/exports/{batch_id}/download")
 def download_export(batch_id: int, s: SessionDep, storage: StorageDep) -> Response:
-    b = s.get(ExportBatch, batch_id)
-    if b is None:
-        raise HTTPException(404, f"export {batch_id} not found")
+    b = owned_or_404(s, ExportBatch, batch_id, require_owner(s), "export")
     try:
         return download(*batch_file(storage, b))
     except ExportError as e:

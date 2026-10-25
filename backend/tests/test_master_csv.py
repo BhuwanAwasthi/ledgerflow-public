@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from app.settings import Settings
-from tests.conftest import MASTER_DIR
+from tests.conftest import MASTER_DIR, auth_client
 
 ORDER = ("vendors", "purchase_orders", "po_lines")
 
@@ -34,11 +34,12 @@ def master(entity: str) -> str:
 
 @pytest.fixture
 def client(test_settings: Settings) -> Iterator[TestClient]:
-    with TestClient(create_app(test_settings)) as c:
+    with auth_client(create_app(test_settings)) as c:
+        # the workspace was seeded from these files on sign-in: importing them again changes nothing
         for entity in ORDER:
             r = upload(c, entity, master(entity))
             assert r.status_code == 200, r.text
-            assert r.json()["created"] == len(rows(master(entity)))
+            assert (r.json()["created"], r.json()["unchanged"]) == (0, len(rows(master(entity))))
         yield c
 
 
@@ -80,6 +81,8 @@ def test_invalid_file_is_rejected_whole(client: TestClient):
     assert any("non_po_allowed" in e for e in errors)
     codes = {row["code"] for row in rows(client.get("/api/master/vendors.csv").text)}
     assert "V900" not in codes  # nothing written
+    ok = upload(client, "vendors", f"{header}\n{valid}\n")
+    assert ok.status_code == 200 and ok.json()["created"] == 1
 
 
 def test_bank_details_of_an_existing_vendor_cannot_change_by_import(client: TestClient):

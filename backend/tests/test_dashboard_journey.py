@@ -5,15 +5,15 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from fastapi.testclient import TestClient
 
+from app import baseline
 from app.agents.base import StubScript
 from app.config_loader import ConfigError, build_config
 from app.dashboard import RangeError, metrics
 from app.journey import build_journey
 from app.main import create_app
 from app.models import Case, StageEvent
-from tests.conftest import Pipeline, patch_yaml
+from tests.conftest import Pipeline, auth_client, patch_yaml
 from tests.test_api import parse_sse, wait_status
 from tests.test_loops import _today, run  # noqa: F401  (_today pins the policy date for these runs too)
 
@@ -97,7 +97,7 @@ def test_ui_config_is_validated(config_files: dict[str, str]):
 
 def test_rerun_retries_a_failed_stage_and_sse_after(test_settings):
     app = create_app(test_settings, script=StubScript({"policy": ["!error", "evaluated"], "decide": ["needs_review"]}))
-    with TestClient(app) as client:
+    with auth_client(app) as client:
         case = client.post("/api/cases", files=[("files", ("inv.pdf", b"%PDF-1.4 x", "application/pdf"))]).json()
         failed = wait_status(client, case["id"], {"failed"})
         assert failed["current_stage"] == "policy" and failed["events"][-1]["status"] == "failed"
@@ -140,9 +140,10 @@ def test_status_text_placeholders_and_exception_decisions_are_validated(config_f
     assert "exception_decisions 'rejekt'" in msg
 
 
-def test_rerun_refused_for_final_cases_and_edge_filters(test_settings):
+def test_rerun_refused_for_final_cases_and_edge_filters(test_settings, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(baseline, "seed_history", lambda *a, **k: 0)  # a workspace with no demo history
     app = create_app(test_settings, script=StubScript({"intake": ["!error"]}))
-    with TestClient(app) as client:
+    with auth_client(app) as client:
         empty = client.get("/api/dashboard/metrics", params={"range": "7d"}).json()
         assert empty["kpis"]["cases"] == 0 and empty["kpis"]["straight_through_pct"] is None
         assert empty["kpis"]["median_time_to_decision_s"] is None and all(p["cases"] == 0 for p in empty["series"])
@@ -162,7 +163,7 @@ def test_rerun_refused_for_final_cases_and_edge_filters(test_settings):
 
     # an approved case is final: rerun is refused
     app = create_app(test_settings.model_copy(update={"database_url": test_settings.database_url.replace("api.db", "api2.db")}))
-    with TestClient(app) as client:
+    with auth_client(app) as client:
         ok = client.post("/api/cases", files=[("files", ("b.pdf", b"%PDF-1.4 b", "application/pdf"))]).json()
         wait_status(client, ok["id"], {"approved"})
         r = client.post(f"/api/cases/{ok['id']}/rerun", json={})

@@ -29,6 +29,7 @@ from app.llm import LLMError, sum_metrics, text_part
 from app.llm_schemas import CommsDraft
 from app.models import Case, Notification, ReviewActionRow, Vendor, VendorRequest
 from app.settings import get_settings
+from app.tenancy import require_owner, scoped
 
 _JINJA = SandboxedEnvironment(autoescape=False)
 
@@ -200,11 +201,12 @@ class CommsAgent(Agent):
     @staticmethod
     def _info_request(s: Session, case: Case, need_ids: list[str]) -> VendorRequest:
         """One open info request per case (reused when the case is held again)."""
-        req = s.scalars(
+        req = s.scalars(scoped(
             select(VendorRequest).where(
                 VendorRequest.case_id == case.id, VendorRequest.kind == "info", VendorRequest.status.in_(["open", "submitted"])
-            )
-        ).first()
+            ),
+            require_owner(s),
+        )).first()
         if req is None:
             req = VendorRequest(vendor_id=case.vendor_id, proposed_name=None, token=secrets.token_urlsafe(16),
                                 docs_needed=need_ids, docs_received=[], status="open", case_id=case.id, kind="info")

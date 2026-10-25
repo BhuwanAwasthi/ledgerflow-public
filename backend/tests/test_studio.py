@@ -7,16 +7,13 @@ from datetime import date
 
 import pytest
 import yaml
-from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
 from app.agents import policy
-from app.db import init_db, make_engine, make_session_factory
 from app.main import create_app
 from app.models import ConfigVersion, POConsumption, RuleResult, StageEvent, TemplateVersion
-from app.seed import load_master
 from app.settings import Settings
-from tests.conftest import MASTER_DIR
+from tests.conftest import auth_client
 from tests.test_api import wait_status
 
 SETTLED = {"approved", "needs_review", "on_hold", "rejected", "failed"}
@@ -33,18 +30,11 @@ def with_pct(rules_yaml: str, pct: float) -> str:
 @pytest.fixture
 def live_settings(test_settings: Settings, monkeypatch: pytest.MonkeyPatch) -> Settings:
     monkeypatch.setattr(policy, "today", lambda: date(2026, 10, 11))
-    settings = test_settings.model_copy(update={"force_stub_agents": False, "llm_backend": "fake"})
-    engine = make_engine(settings.database_url)
-    init_db(engine)
-    with make_session_factory(engine)() as s:
-        load_master(s, MASTER_DIR)
-        s.commit()
-    engine.dispose()
-    return settings
+    return test_settings.model_copy(update={"force_stub_agents": False, "llm_backend": "fake"})
 
 
 def test_files_validate_save_versions_reset(test_settings: Settings):
-    with TestClient(create_app(test_settings)) as client:
+    with auth_client(create_app(test_settings)) as client:
         files = {f["path"]: f for f in client.get("/api/config/files").json()}
         assert {"rules.yaml", "workflow.yaml", "agents/policy.yaml", "prompts/extraction.md"} <= set(files)
         assert files["agents/policy.yaml"]["kind"] == "agent" and files["prompts/extraction.md"]["kind"] == "prompt"
@@ -85,12 +75,14 @@ def test_files_validate_save_versions_reset(test_settings: Settings):
 
         # a valid edit becomes the active version and the resolved config
         good = with_pct(rules["content"], 5)
-        hash0 = client.get("/healthz").json()["config_hash"]
+        hash0 = client.get("/api/config").json()["hash"]
+        base_hash = client.get("/healthz").json()["config_hash"]
         saved = client.put("/api/config/rules.yaml", json={"content": good, "author": "Admin"})
         assert saved.status_code == 200, saved.text
         body = saved.json()
         assert body["overridden"] and body["active_version"] == 1 and body["config_hash"] != hash0
-        assert client.get("/healthz").json()["config_hash"] == body["config_hash"]
+        assert client.get("/api/config").json()["hash"] == body["config_hash"]  # this user's resolved config
+        assert client.get("/healthz").json()["config_hash"] == base_hash  # the server's baseline is untouched
         resolved = client.get("/api/config").json()
         price = next(r for r in resolved["rules"]["rules"] if r["id"] == "price_tolerance")
         assert price["params"]["pct"] == 5
@@ -106,7 +98,7 @@ def test_files_validate_save_versions_reset(test_settings: Settings):
 
 
 def test_s08_flips_to_auto_approve_with_pct_5_and_test_agent_is_dry(live_settings: Settings):
-    with TestClient(create_app(live_settings)) as client:
+    with auth_client(create_app(live_settings)) as client:
         first = client.post("/api/fixtures/S08_price_variance/run").json()
         first = wait_status(client, first["id"], SETTLED, timeout=60)
         assert first["decision"] == "needs_review"

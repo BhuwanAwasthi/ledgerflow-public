@@ -93,13 +93,14 @@ def page_count(pdf: bytes) -> int:
 
 # ---------------------------------------------------------------- storage keys
 # Content-addressed by the uploaded file's sha256, so page-range segments of one file and the child cases
-# of a bundle share the renders.
-def page_png_key(sha256: str, page_no: int) -> str:
-    return f"renders/{sha256}/pages/{page_no}.png"
+# of a bundle share the renders. `root` is "" for a user's file (OwnerStorage puts it under the user's
+# prefix) or "baseline/" for a shared demo file (rendered once, app.baseline).
+def page_png_key(sha256: str, page_no: int, root: str = "") -> str:
+    return f"{root}renders/{sha256}/pages/{page_no}.png"
 
 
-def text_key(sha256: str) -> str:
-    return f"renders/{sha256}/text.json"
+def text_key(sha256: str, root: str = "") -> str:
+    return f"{root}renders/{sha256}/text.json"
 
 
 def dump_texts(texts: list[str]) -> bytes:

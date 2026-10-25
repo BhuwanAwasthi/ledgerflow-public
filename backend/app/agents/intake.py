@@ -4,6 +4,7 @@
 - reject empty uploads and files over the size or page limits
 - render page PNGs (render_dpi, max_pages) and store the text layer per page
 - flag scanned PDFs (text layer shorter than min_text_chars)
+A shared demo file (baseline/) is not rendered again: its renders were stored with it (app.baseline).
 Bundles are split later, once the classifier has marked page ranges.
 """
 
@@ -17,9 +18,17 @@ from sqlalchemy import select
 
 from app import pdf
 from app.agents.base import Agent, AgentContext, AgentResult
+from app.config_loader import Limits
+from app.documents import is_baseline, page_texts
 from app.models import Document
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
+def render_params(limits: Limits, params: dict[str, Any]) -> tuple[int, int]:
+    """(dpi, max pages): the agent's params, capped by app.yaml limits."""
+    max_pages = min(int(params.get("max_pages", limits.max_pages_per_document)), limits.max_pages_per_document)
+    return int(params.get("render_dpi", limits.render_dpi)), max_pages
 
 
 class IntakeAgent(Agent):
@@ -27,8 +36,7 @@ class IntakeAgent(Agent):
         assert ctx.storage is not None, "intake needs storage"
         p = ctx.params
         limits = ctx.config.app.limits
-        max_pages = min(int(p.get("max_pages", limits.max_pages_per_document)), limits.max_pages_per_document)
-        dpi = int(p.get("render_dpi", limits.render_dpi))
+        dpi, max_pages = render_params(limits, p)
         min_text = int(p["min_text_chars"])
         accepted = set(p.get("accepted_mime", []))
         max_bytes = limits.max_upload_mb * 1024 * 1024
@@ -74,7 +82,11 @@ class IntakeAgent(Agent):
                     data = converted
                 doc.mime = "application/pdf"
 
-                rendered = await asyncio.to_thread(pdf.render, data, dpi, max_pages)
+                if is_baseline(doc):  # a shared demo file: rendered once when it was published (app.baseline)
+                    texts = await asyncio.to_thread(page_texts, ctx.storage, doc)
+                    rendered = pdf.Rendered(await asyncio.to_thread(pdf.page_count, data), [], texts)
+                else:
+                    rendered = await asyncio.to_thread(pdf.render, data, dpi, max_pages)
                 if rendered.pages > max_pages:
                     return AgentResult(
                         "too_large",

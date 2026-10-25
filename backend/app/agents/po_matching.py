@@ -28,6 +28,7 @@ from app.llm import sum_metrics, text_part
 from app.llm_schemas import GLCodingOutput, POInferenceOutput
 from app.models import GRN, Case, Document, GLAccount, POLine, PurchaseOrder, StageEvent, Vendor
 from app.rules.engine import dec, fmt_money
+from app.tenancy import require_owner, scoped
 
 
 def _norm_po(v: str | None) -> str:
@@ -77,7 +78,11 @@ class POMatchingAgent(Agent):
             explicit_issue: str | None = None
             if ref:
                 explicit = next(
-                    (po for po in s.scalars(select(PurchaseOrder)).all() if _norm_po(po.po_number) == _norm_po(ref)),
+                    (
+                        po
+                        for po in s.scalars(scoped(select(PurchaseOrder), require_owner(s))).all()
+                        if _norm_po(po.po_number) == _norm_po(ref)
+                    ),
                     None,
                 )
                 if explicit is None:
@@ -96,11 +101,12 @@ class POMatchingAgent(Agent):
                 candidates = [explicit]
             elif vendor_id is not None:
                 candidates = list(
-                    s.scalars(
+                    s.scalars(scoped(
                         select(PurchaseOrder)
                         .where(PurchaseOrder.vendor_id == vendor_id, PurchaseOrder.status == "open")
-                        .order_by(PurchaseOrder.po_number)
-                    ).all()
+                        .order_by(PurchaseOrder.po_number),
+                        require_owner(s),
+                    )).all()
                 )
             else:
                 candidates = []
@@ -216,7 +222,9 @@ class POMatchingAgent(Agent):
         vendor_id = ctx.state.get("vendor", {}).get("vendor_id")
         with ctx.session_factory() as s:
             vendor = s.get(Vendor, vendor_id) if vendor_id else None
-            accounts = {a.code: a for a in s.scalars(select(GLAccount).order_by(GLAccount.code)).all()}
+            accounts = {
+                a.code: a for a in s.scalars(scoped(select(GLAccount).order_by(GLAccount.code), require_owner(s))).all()
+            }
             history = self._history(s, vendor_id, ctx.case_id, int(ctx.params["gl_history_cases"])) if vendor_id else []
             await ctx.emit("suggesting GL coding")
             out, call = await self.call_llm(
@@ -274,12 +282,13 @@ class POMatchingAgent(Agent):
     @staticmethod
     def _history(s: Session, vendor_id: int, case_id: int, limit: int) -> list[dict[str, Any]]:
         """Recent approved non-PO codings for this vendor."""
-        approved = s.scalars(
+        approved = s.scalars(scoped(
             select(Case.id)
             .where(Case.vendor_id == vendor_id, Case.id != case_id, Case.status.in_(["approved", "exported"]))
             .order_by(Case.id.desc())
-            .limit(limit)
-        ).all()
+            .limit(limit),
+            require_owner(s),
+        )).all()
         out: list[dict[str, Any]] = []
         for cid in approved:
             ev = s.scalars(
@@ -293,7 +302,9 @@ class POMatchingAgent(Agent):
 
 
 def po_view(s: Session, po: PurchaseOrder, case_id: int) -> dict[str, Any]:
-    lines = s.scalars(select(POLine).where(POLine.po_id == po.id).order_by(POLine.line_no)).all()
+    lines = s.scalars(
+        scoped(select(POLine).where(POLine.po_id == po.id).order_by(POLine.line_no), require_owner(s))
+    ).all()
     committed = po_ledger.committed(s, po.id, exclude_case_id=case_id)
     return {
         "po_number": po.po_number,
@@ -322,10 +333,11 @@ def pair_lines(
 ) -> list[dict[str, Any]]:
     """Validate the model's pairs against the PO (line exists, used once, descriptions at least
     `min_similarity` alike by rapidfuzz token_set_ratio) and add GRN quantities."""
-    po_lines = {ln.line_no: ln for ln in s.scalars(select(POLine).where(POLine.po_id == po.id)).all()}
+    owner = require_owner(s)
+    po_lines = {ln.line_no: ln for ln in s.scalars(scoped(select(POLine).where(POLine.po_id == po.id), owner)).all()}
     grn: dict[int, Decimal] = {}
     if use_grn:
-        for g in s.scalars(select(GRN).where(GRN.po_id == po.id)).all():
+        for g in s.scalars(scoped(select(GRN).where(GRN.po_id == po.id), owner)).all():
             grn[g.line_no] = grn.get(g.line_no, Decimal(0)) + g.qty_received
     before = po_ledger.committed_qty_by_line(s, po.id, exclude_case_id=case_id)
     used: set[int] = set()

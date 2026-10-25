@@ -21,6 +21,7 @@ from app.documents import page_pngs, page_range, page_texts, text_block
 from app.llm import image_part, sum_metrics, text_part
 from app.llm_schemas import FieldConfidence, FieldLocations, InvoiceExtraction
 from app.models import Case, Document, Extraction, Vendor, VendorMemory
+from app.tenancy import require_owner, scoped
 
 INVOICE_ROUTE = "case_invoice"
 
@@ -176,18 +177,22 @@ class ExtractionAgent(Agent):
         vendor = s.get(Vendor, vendor_id) if vendor_id else None
         if vendor is None and case.submitter_email and "@" in case.submitter_email:
             domain = case.submitter_email.rsplit("@", 1)[1].lower()
-            vendor = s.scalars(select(Vendor).where(func.lower(Vendor.email_domain) == domain)).first()
+            vendor = s.scalars(
+                scoped(select(Vendor).where(func.lower(Vendor.email_domain) == domain), require_owner(s))
+            ).first()
         if vendor is None and texts:
             flat = pdf.squash(" ".join(texts)).lower()
-            vendor = next((v for v in s.scalars(select(Vendor)).all() if v.legal_name.lower() in flat), None)
+            vendors = s.scalars(scoped(select(Vendor), require_owner(s))).all()
+            vendor = next((v for v in vendors if v.legal_name.lower() in flat), None)
         if vendor is None:
             return None, []
-        rows = s.scalars(
+        rows = s.scalars(scoped(
             select(VendorMemory)
             .where(VendorMemory.vendor_id == vendor.id)
             .order_by(VendorMemory.created_at.desc())
-            .limit(int(ctx.params["max_vendor_hints"]))
-        ).all()
+            .limit(int(ctx.params["max_vendor_hints"])),
+            require_owner(s),
+        )).all()
         return vendor.legal_name, [r.hint for r in rows]
 
 

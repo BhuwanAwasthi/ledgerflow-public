@@ -26,6 +26,7 @@ from app.config_loader import ErpProfile, ResolvedConfig
 from app.exports.service import get_profile
 from app.models import Case, Extraction, POConsumption, PurchaseOrder, RuleResult, StageEvent, TemplateVersion
 from app.rules.engine import dec
+from app.tenancy import scoped
 
 _EXPR = re.compile(r"\{\{\s*(inv|line|vendor|po)\b(?:\.([a-z_]+))?[^}]*\}\}")
 _ONE = re.compile(r"^\s*\{\{[^}]*\}\}\s*$")
@@ -130,7 +131,7 @@ def _edited_fields(state: dict[str, Any]) -> set[str]:
 
 def _po_balance(s: Session, case: Case, state: dict[str, Any], inv: dict[str, Any]) -> dict[str, Any] | None:
     pm = state.get("po_matching") or {}
-    po = s.get(PurchaseOrder, pm["po_id"]) if pm.get("po_id") else None
+    po = s.scalars(scoped(select(PurchaseOrder).where(PurchaseOrder.id == pm["po_id"]), case.owner_id)).first() if pm.get("po_id") else None
     if po is None:
         return None
     rec = {} if is_stale(state) else (state.get("reconciler") or {})
@@ -184,7 +185,7 @@ def build_workspace(s: Session, cfg: ResolvedConfig, case: Case) -> dict[str, An
     for rr in results:
         other = (rr.evidence or {}).get("other_case_id")
         if rr.status == "fail" and other:
-            oc = s.get(Case, int(other))
+            oc = s.scalars(scoped(select(Case).where(Case.id == int(other)), case.owner_id)).first()
             duplicates.append({"rule_id": rr.rule_id, "case_id": int(other), "ref": oc.ref if oc else None,
                                "explanation": rr.explanation})
     return {

@@ -5,8 +5,11 @@ from __future__ import annotations
 import json
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -55,7 +58,20 @@ def make_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 
-def init_db(engine: Engine) -> None:
-    from app import models  # noqa: F401  (register tables)
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 
-    Base.metadata.create_all(engine)
+
+def alembic_config() -> Config:
+    cfg = Config(str(BACKEND_DIR / "alembic.ini"))
+    cfg.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
+    cfg.attributes["configure_logging"] = False  # keep the app's logging setup
+    return cfg
+
+
+def init_db(engine: Engine) -> None:
+    """Bring the schema to the latest Alembic revision (a no-op when it is already there). Render also runs
+    `alembic upgrade head` before uvicorn starts."""
+    cfg = alembic_config()
+    with engine.begin() as conn:
+        cfg.attributes["connection"] = conn
+        command.upgrade(cfg, "head")

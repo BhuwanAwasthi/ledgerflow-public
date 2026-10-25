@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.agents.base import Agent, AgentContext, AgentResult
 from app.models import Case, Vendor, VendorRequest
+from app.tenancy import require_owner, scoped
 
 
 def iban_hash(iban: str | None) -> str | None:
@@ -40,7 +41,7 @@ def match_vendor(
     s: Session, invoice: dict[str, Any], submitter_email: str | None, threshold: float
 ) -> tuple[Vendor | None, str | None, float | None]:
     """(vendor, method, score). Every master vendor is a candidate, whatever its status."""
-    vendors = s.scalars(select(Vendor).order_by(Vendor.id)).all()
+    vendors = s.scalars(scoped(select(Vendor).order_by(Vendor.id), require_owner(s))).all()
     tax = _digits(invoice.get("vendor_tax_id"))
     if tax:
         for v in vendors:
@@ -58,7 +59,9 @@ def match_vendor(
             return best[1], "name", round(best[0], 1)
     for method, domain in (("email_domain", _domain(invoice.get("vendor_email"))), ("submitter_domain", _domain(submitter_email))):
         if domain:
-            v = s.scalars(select(Vendor).where(func.lower(Vendor.email_domain) == domain)).first()
+            v = s.scalars(
+                scoped(select(Vendor).where(func.lower(Vendor.email_domain) == domain), require_owner(s))
+            ).first()
             if v is not None:
                 return v, method, None
     return None, None, None
@@ -174,13 +177,14 @@ class VendorAgent(Agent):
                 s.flush()
                 created = True
                 case.vendor_id = vendor.id
-            req = s.scalars(
+            req = s.scalars(scoped(
                 select(VendorRequest).where(
                     VendorRequest.vendor_id == vendor.id,
                     VendorRequest.kind == "onboarding",
                     VendorRequest.status.in_(["open", "submitted"]),
-                )
-            ).first()
+                ),
+                require_owner(s),
+            )).first()
             reused = req is not None
             if req is None:
                 req = VendorRequest(
@@ -216,6 +220,6 @@ class VendorAgent(Agent):
 
     @staticmethod
     def _next_code(s: Session) -> str:
-        codes = s.scalars(select(Vendor.code)).all()
+        codes = s.scalars(scoped(select(Vendor.code), require_owner(s))).all()
         nums = [int(m.group(1)) for c in codes if (m := re.fullmatch(r"V(\d+)", c))]
         return f"V{(max(nums, default=0) + 1):03d}"

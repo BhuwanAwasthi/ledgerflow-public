@@ -10,29 +10,33 @@ then Vercel, then go back to Render to set the CORS origin. About 20 minutes. Co
    Use the session pooler (port 5432, IPv4). Render free has no IPv6, so the direct `db.<ref>.supabase.co` host fails.
 4. Project Settings → API → copy the **Project URL** and the **service_role** key (server-side only, never in the SPA).
 
-## 2. Seed Supabase from your laptop
+## 2. Database schema
+Nothing to run by hand: Render's start command runs the Alembic migrations (`alembic upgrade head`) before
+uvicorn starts, on a fresh Supabase project. Each user's workspace (vendors, POs, GRNs, GL accounts, seeded
+history) is copied from `data/master/*.csv` on their first sign-in; the scenario PDFs are stored once under
+`baseline/` in the bucket the first time anyone runs them. To wipe the whole database from your laptop:
 ```powershell
 $env:DATABASE_URL = "<session pooler URI>"
 make seed
 Remove-Item Env:DATABASE_URL
 ```
-Expect `Seeded postgresql database: vendors=7 purchase_orders=7 ... seeded_history_cases=40`. Tables are created by
-the seed (and by the API on startup), so there are no migrations to run. Re-running `make seed` resets the demo data.
+`make seed` drops every table and migrates to head again (empty: no users, no workspaces).
 
 ## 3. Render (API)
-1. Dashboard → New → **Blueprint** → pick this repo. It reads `render.yaml` (free web service, `uv sync`, uvicorn on `$PORT`, health check `/healthz`).
+1. Dashboard → New → **Blueprint** → pick this repo. It reads `render.yaml` (free web service, `uv sync`, migrations then uvicorn on `$PORT`, health check `/healthz`, `AUTH_MODE=supabase`, a generated `FILE_TOKEN_SECRET`).
 2. Fill the `sync: false` env vars:
 
 | Key | Value |
 | --- | --- |
 | `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT` | same as your `.env` |
 | `DATABASE_URL` | the session pooler URI from step 1.3 |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | from step 1.4 |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | from step 1.4 (the API verifies sign-in tokens against `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`) |
+| `SUPABASE_JWT_SECRET` | only if the project still signs with the legacy HS256 JWT secret; otherwise leave it unset |
 | `CORS_ORIGINS` | the Vercel URL (comma-separated if several); set a placeholder now, fix in step 5 |
 | `PUBLIC_APP_URL` | the Vercel URL (portal links and mailto drafts) |
 
-3. Deploy, then open `https://<service>.onrender.com/healthz`. Expect
-   `{"ok": true, "db": "ok", "storage": "ok", "llm_path": "responses"}` (or `"chat"`). Right after boot `llm_path` is
+3. Deploy, then open `https://<service>.onrender.com/healthz` (the only route that answers without signing in).
+   Expect `{"ok": true, "db": "ok", "storage": "ok", "llm_path": "responses", "auth_mode": "supabase"}` (or `"chat"`). Right after boot `llm_path` is
    `not_probed` for a few seconds while the background probe picks the API path.
 
 ## 4. Vercel (SPA)
@@ -49,18 +53,14 @@ the seed (and by the API on startup), so there are no migrations to run. Re-runn
 
 ## 6. Verify (B5 done-check)
 ```powershell
+$env:SMOKE_TOKEN = "<access token of a signed-in test user>"
 make smoke-deploy URL=https://<service>.onrender.com
+Remove-Item Env:SMOKE_TOKEN
 ```
-It waits out a cold start, requires `db=ok storage=ok llm_path=responses|chat`, runs `S01_happy` on the live LLM and
-checks it ends `auto_approve`. It needs a freshly seeded DB. A second S01 run is a real duplicate: it rejects on
-`duplicate_exact` and PO-1002 is already consumed.
-
-Then **reset before the demo or P6**, so that S01 runs once in `run_order` and S04 can point at it:
-```powershell
-$env:DATABASE_URL = "<session pooler URI>"; make seed; Remove-Item Env:DATABASE_URL
-```
-Then restart the Render service (Manual Deploy → Restart). Open the Vercel URL, run S01 from the scenario launcher and
-watch the live run.
+It waits out a cold start, requires `db=ok storage=ok llm_path=responses|chat`, checks that `/api/fixtures`
+answers 401 without a token, then runs `S01_happy` as that user and checks it ends `auto_approve`. Without
+`SMOKE_TOKEN` it stops after the auth-wall check. A second S01 run in the same workspace is a real duplicate (it
+rejects on `duplicate_exact`): reset that user's demo data first (`POST /api/me/reset-workspace`).
 
 ## Troubleshooting
 - `db: error: OperationalError`: wrong pooler URI or password, or the Supabase project is paused (free projects pause after a week idle; restore it in the dashboard).

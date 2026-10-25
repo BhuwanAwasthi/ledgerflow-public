@@ -21,6 +21,7 @@ from app.exports.context import template_context
 from app.exports.render import diff_rows, make_env, render_rows, render_string, to_bytes
 from app.models import Case, PurchaseOrder, ReviewActionRow, TemplateVersion, utcnow
 from app.rules.engine import fmt_money
+from app.tenancy import scoped
 
 
 def profile_for(cfg: ResolvedConfig, params: dict[str, Any]) -> ErpProfile:
@@ -110,7 +111,7 @@ class TemplateAgent(Agent):
         ]
         lines: list[str] = []
         for po_number, amount in amendments.items():
-            po = s.scalars(select(PurchaseOrder).where(PurchaseOrder.po_number == po_number)).first()
+            po = s.scalars(scoped(select(PurchaseOrder).where(PurchaseOrder.po_number == po_number), case.owner_id)).first()
             if po is None:
                 continue
             new_amount = Decimal(str(amount))
