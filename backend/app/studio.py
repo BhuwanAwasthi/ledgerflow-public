@@ -34,7 +34,7 @@ from app.config_loader import (
     read_config_files,
 )
 from app.db import dumps
-from app.llm import LLM
+from app.llm import LLM, AzureLLM
 from app.models import Case, ConfigVersion, StageEvent, StageStatus
 from app.storage import Storage
 
@@ -175,6 +175,8 @@ def agent_stats(session: Session) -> dict[str, dict[str, Any]]:
     ).all()
     acc: dict[str, dict[str, Any]] = {}
     for agent_id, status, metrics in rows:
+        if agent_id is None:
+            continue
         a = acc.setdefault(agent_id, {"runs": 0, "failed": 0, "latency": [], "cost": [], "tokens": 0})
         a["runs"] += 1
         if status == StageStatus.failed:
@@ -282,7 +284,7 @@ async def dry_run(
 
     scratch_storage = MemoryWriteStorage(storage)
     with scratch_sessions(engine) as sf:
-        if llm is not None and hasattr(llm, "session_factory"):
+        if isinstance(llm, AzureLLM):
             llm = copy.copy(llm)  # its response cache writes go to the scratch copy too
             llm.session_factory = sf
         with sf() as s:

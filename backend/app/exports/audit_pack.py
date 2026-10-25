@@ -10,7 +10,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -52,7 +52,7 @@ def build_audit_pack(s: Session, case: Case, app_name: str) -> bytes:
     templates = s.scalars(select(TemplateVersion).where(TemplateVersion.case_id == case.id).order_by(TemplateVersion.version)).all()
     docs = s.scalars(select(Document).where(Document.case_id == case.id).order_by(Document.id)).all()
 
-    story: list[object] = [
+    story: list[Flowable] = [
         Paragraph(escape(f"{app_name} audit pack: {case.ref}"), _STYLES["Title"]),
         _table(
             ["Field", "Value"],

@@ -48,7 +48,7 @@ def committed_qty_by_line(s: Session, po_id: int, *, exclude_case_id: int | None
     )
     if exclude_case_id is not None:
         q = q.where(POConsumption.case_id != exclude_case_id)
-    return {line_id: Decimal(str(qty)) for line_id, qty in s.execute(q).all()}
+    return {line_id: Decimal(str(qty)) for line_id, qty in s.execute(q).all() if line_id is not None}
 
 
 def release(s: Session, case_id: int) -> Decimal:

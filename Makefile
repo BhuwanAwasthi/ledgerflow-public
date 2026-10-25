@@ -2,7 +2,7 @@
 BACKEND := uv --directory backend
 FRONTEND := $(wildcard frontend/package.json)
 
-.PHONY: setup dev test test-live lint check frontend-check fixtures seed smoke-deploy
+.PHONY: setup dev test test-live lint typecheck brand check frontend-check fixtures seed smoke-deploy
 
 setup:
 	$(BACKEND) sync
@@ -22,6 +22,12 @@ test-live:  # make test-live ARGS="-k extraction -s"
 lint:
 	$(BACKEND) run ruff check .
 
+typecheck:  # pyright (basic) on backend/app
+	$(BACKEND) run pyright
+
+brand:  # banned terms in tracked files (config/brand_guard.yaml)
+	$(BACKEND) run python -m scripts.brand_guard
+
 frontend-check:
 ifneq ($(FRONTEND),)
 	npm --prefix frontend run typecheck
@@ -30,7 +36,7 @@ else
 	@echo "frontend/ not created yet (phase F1): skipping typecheck and build"
 endif
 
-check: lint test frontend-check
+check: lint typecheck brand test frontend-check
 
 fixtures:
 	$(BACKEND) run python -m scripts.generate_fixtures

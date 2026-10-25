@@ -22,10 +22,12 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from openai import AsyncOpenAI, OpenAIError
+from openai.types.chat import ChatCompletionContentPartParam
+from openai.types.responses import ResponseFormatTextJSONSchemaConfigParam, ResponseInputContentParam
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.config_loader import ResolvedConfig
+from app.config_loader import ReasoningEffort, ResolvedConfig
 from app.models import LLMCache
 from app.settings import Settings
 
@@ -100,7 +102,7 @@ class LLMRequest:
     schema: type[BaseModel]
     instructions: str
     content: list[Part]
-    effort: str
+    effort: ReasoningEffort
     max_output_tokens: int
     deployment: str | None = None
     json_schema: dict[str, Any] | None = None  # override (e.g. label enum injected from config)
@@ -176,7 +178,9 @@ class AzureLLM:
         async with self._probe_lock:
             if self.path in ("responses", "chat"):
                 return self.path
-            fmt = {"type": "json_schema", "name": "probe", "schema": _PROBE_SCHEMA, "strict": True}
+            fmt: ResponseFormatTextJSONSchemaConfigParam = {
+                "type": "json_schema", "name": "probe", "schema": _PROBE_SCHEMA, "strict": True
+            }
             try:
                 await self.client.responses.create(
                     model=self.deployment,
@@ -295,10 +299,10 @@ class AzureLLM:
     async def _responses(
         self, req: LLMRequest, model: str, budget: int
     ) -> tuple[str, tuple[int, int, int], bool]:
-        content = [
+        content: list[ResponseInputContentParam] = [
             {"type": "input_text", "text": p["text"]}
             if p["type"] == "text"
-            else {"type": "input_image", "image_url": _data_url(p["png"])}
+            else {"type": "input_image", "image_url": _data_url(p["png"]), "detail": "auto"}
             for p in req.content
         ]
         r = await self.client.responses.create(
@@ -327,7 +331,7 @@ class AzureLLM:
         return r.output_text, usage, incomplete
 
     async def _chat(self, req: LLMRequest, model: str, budget: int) -> tuple[str, tuple[int, int, int], bool]:
-        content = [
+        content: list[ChatCompletionContentPartParam] = [
             {"type": "text", "text": p["text"]}
             if p["type"] == "text"
             else {"type": "image_url", "image_url": {"url": _data_url(p["png"])}}

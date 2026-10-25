@@ -114,7 +114,7 @@ class TemplateAgent(Agent):
             if po is None:
                 continue
             new_amount = Decimal(str(amount))
-            note = next((r for r in notes if Decimal(str(r.changeset["new_amount"])) == new_amount), None)
+            note = next((r for r in notes if Decimal(str((r.changeset or {})["new_amount"])) == new_amount), None)
             old = po.amount
             row = po_ledger.amend(
                 s, po, new_amount,

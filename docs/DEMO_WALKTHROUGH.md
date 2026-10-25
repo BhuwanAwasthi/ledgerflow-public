@@ -29,7 +29,7 @@ Two scripts in one file:
 
 Screen: **Dashboard**.
 
-> "I picked PS-1, invoice processing. The AP clerk's job is: open the PDF, find the PO in a spreadsheet, check the numbers, decide. LedgerFlow does that job and shows its working.
+> "This is about invoice processing. The AP clerk's job is: open the PDF, find the PO in a spreadsheet, check the numbers, decide. LedgerFlow does that job and shows its working.
 >
 > An invoice goes in as a PDF, a scan, an image or a Word file. It comes out with one of four decisions:
 > - **Auto-approve**: every rule passed, so it's ready to export to the ERP.

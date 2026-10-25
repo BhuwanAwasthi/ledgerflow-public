@@ -26,6 +26,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pyright>=1.1.414",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "ruff>=0.6",
@@ -46,3 +47,10 @@ asyncio_default_fixture_loop_scope = "function"
 addopts = "-m \"not live\""
 markers = ["live: hits Azure OpenAI (run with `make test-live`)"]
 filterwarnings = ["ignore:Dialect sqlite\\+pysqlite does \\*not\\* support Decimal objects natively"]
+
+[tool.pyright]
+include = ["app"]
+typeCheckingMode = "basic"
+pythonVersion = "3.12"
+venvPath = "."
+venv = ".venv"

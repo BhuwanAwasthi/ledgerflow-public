@@ -1,0 +1,25 @@
+# Brand guard (backend/scripts/brand_guard.py, run by `make check` and CI).
+# Terms that must never appear in tracked files, file paths or new commit messages.
+# Dev tooling, not app config: config_loader keeps this file out of the resolved config and Agent Studio.
+
+# Case-insensitive substring match.
+substrings:
+  - zamp
+  - case study
+  - take-home
+  - hiring
+  - recruiter
+  - candidate guide
+
+# Case-sensitive whole-word match (never a substring: "space", "workspace" and "Basalt" are fine).
+words:
+  - Pace
+  - ASA
+  - PS-1
+  - PS-2
+  - PS-3
+
+# Repo-relative paths that may contain the terms. Only this file and the guard's own tests.
+exclude:
+  - config/brand_guard.yaml
+  - backend/tests/test_brand_guard.py

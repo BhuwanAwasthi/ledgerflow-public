@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.config_loader import ResolvedConfig
 from app.models import Case, CaseStatus, ReviewActionRow, RuleResult, StageEvent, StageStatus
 
-EXCLUDED = (CaseStatus.split,)  # a bundle parent is not an invoice; its children are counted
+EXCLUDED = (CaseStatus.split_bundle,)  # a bundle parent is not an invoice; its children are counted
 
 
 class RangeError(ValueError):

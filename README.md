@@ -6,7 +6,7 @@ A vendor or employee submits invoices. Eleven configurable agents classify the d
 
 > **The model gathers evidence. Rules make the decision.** LLM output never sets a decision, a rule status or an amount directly. Every money decision passes through deterministic rule and decision code.
 
-Built for the Zamp case study PS-1 (*Invoice processing: from PDF to decision*). It also includes a light vendor-onboarding flow (PS-2) as one of the edge cases.
+An AP invoice-to-decision engine. It also includes a light vendor-onboarding flow as one of the edge cases.
 
 **New to the app?** The [User Guide](docs/USER_GUIDE.md) walks through every screen for submitters, reviewers, admins and vendors.
 
@@ -110,8 +110,8 @@ Each scenario in `data/scenarios.yaml` has a generated PDF and an automated test
 **Prerequisites:** Python 3.12, [uv](https://docs.astral.sh/uv/), Node 20+, GNU make. On Windows, the make from ezwinports works.
 
 ```bash
-git clone https://github.com/BhuwanAwasthi/ledgerflow.git
-cd ledgerflow
+git clone https://github.com/BhuwanAwasthi/ledgerflow-public.git
+cd ledgerflow-public
 make setup                 # uv sync + npm ci
 cp .env.example .env       # then fill in the values below
 make seed                  # create the SQLite DB and load master data + demo history

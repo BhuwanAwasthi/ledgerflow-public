@@ -25,6 +25,8 @@ from app.models import TERMINAL_STATUSES, CaseStatus, ConfigVersion, ReviewActio
 SKIPPED = "skipped"
 END_PREFIX = "end:"
 CONFIG_SUFFIXES = (".yaml", ".yml", ".md")
+ReasoningEffort = Literal["minimal", "low", "medium", "high"]
+TOOLING_FILES = frozenset({"brand_guard.yaml"})  # dev tooling: not resolved config, not editable in Studio
 
 
 class ConfigError(ValueError):
@@ -55,7 +57,7 @@ class LLMSettings(_Open):
     provider: str
     api_path: Literal["auto", "responses", "chat"] = "auto"
     pricing_per_1m_usd: dict[str, float] = Field(default_factory=dict)
-    default_reasoning_effort: Literal["minimal", "low", "medium", "high"] = "low"
+    default_reasoning_effort: ReasoningEffort = "low"
     request_timeout_s: float
 
 
@@ -133,7 +135,7 @@ class AgentAction(_Strict):
 
 class AgentModel(_Open):
     deployment: str | None = None
-    reasoning_effort: Literal["minimal", "low", "medium", "high"] | None = None
+    reasoning_effort: ReasoningEffort | None = None
     max_output_tokens: int | None = None
 
 
@@ -293,9 +295,22 @@ def config_hash(files: dict[str, str]) -> str:
 def read_config_files(config_dir: Path) -> dict[str, str]:
     files: dict[str, str] = {}
     for p in sorted(config_dir.rglob("*")):
-        if p.is_file() and p.suffix in CONFIG_SUFFIXES:
-            files[p.relative_to(config_dir).as_posix()] = p.read_text(encoding="utf-8")
+        rel = p.relative_to(config_dir).as_posix()
+        if p.is_file() and p.suffix in CONFIG_SUFFIXES and rel not in TOOLING_FILES:
+            files[rel] = p.read_text(encoding="utf-8")
     return files
+
+
+# ---------- brand_guard.yaml (dev tooling) ----------
+class BrandGuardConfig(_Strict):
+    substrings: list[str] = Field(min_length=1)
+    words: list[str] = Field(min_length=1)
+    exclude: list[str] = []
+
+
+def load_brand_guard(config_dir: Path) -> BrandGuardConfig:
+    raw = yaml.safe_load((config_dir / "brand_guard.yaml").read_text(encoding="utf-8"))
+    return BrandGuardConfig.model_validate(raw)
 
 
 def load_overrides(session: Session) -> dict[str, str]:

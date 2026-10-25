@@ -1,7 +1,7 @@
 # LedgerFlow — AP Invoice Decision Engine (Product Spec)
 
-> Working name: **LedgerFlow**. Rename freely; it appears only in `config/app.yaml` and the UI header.
-> Case study: Zamp ASA, PS-1 (Invoice processing: from PDF to decision), with light vendor onboarding (PS-2) inside one edge case.
+> Product name: **LedgerFlow** (set in `config/app.yaml`, shown in the UI header). Repository: `ledgerflow-public`.
+> Scope: an AP invoice-to-decision engine, with light vendor onboarding inside one edge case.
 
 ## 0. One-paragraph pitch
 

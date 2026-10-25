@@ -37,6 +37,8 @@ def fold_state(s: Session, case_id: int) -> dict[str, Any]:
         .order_by(StageEvent.seq)
     ).all()
     for ev in rows:
+        if ev.agent_id is None:
+            continue
         state.setdefault(ev.agent_id, {}).update(ev.output or {})
         state[ev.agent_id][SEQ] = ev.seq  # which event wrote it last (overlay staleness)
     return state
