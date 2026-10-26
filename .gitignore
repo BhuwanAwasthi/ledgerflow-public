@@ -21,3 +21,6 @@ docs/ledgerflow-PUBLIC-ADDENDUM.md
 
 # Local copies of fixture PDFs for manual testing
 test_cases/
+
+# Deploy env files with real secrets (local only)
+deploy/
